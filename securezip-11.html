@@ -1,0 +1,4537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SecureZip — local file encryption</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='11' fill='%230A0D12'/%3E%3Ccircle cx='24' cy='24' r='21' fill='none' stroke='%23C9A24B' stroke-width='2.6'/%3E%3Crect x='14.5' y='22' width='19' height='14' rx='2.5' fill='none' stroke='%23C9A24B' stroke-width='2.6'/%3E%3Cpath d='M18 22v-5.2a6 6 0 0 1 12 0V22' fill='none' stroke='%23C9A24B' stroke-width='2.6' stroke-linecap='round'/%3E%3Ccircle cx='24' cy='28.5' r='2' fill='%23C9A24B'/%3E%3C/svg%3E" />
+<style>
+  :root {
+    /* Fill colors: vibrant, theme-independent, always paired with --ink-on-fill text */
+    --brass-fill: #C9A24B;
+    --teal-fill: #3FBFAA;
+    --ink-on-fill: #0A0D12;
+
+    /* Dark theme (default) */
+    --ink-950: #0A0D12;
+    --ink-900: #10141B;
+    --ink-800: #171D26;
+    --ink-700: #1E2630;
+    --ink-600: #262F3B;
+    --line: #29323D;
+    --line-soft: #1B222B;
+    --paper: #E9E6DC;
+    --paper-dim: #9BA3AD;
+    --paper-faint: #838C99;
+
+    --brass: #C9A24B;
+    --brass-soft: #8A7038;
+    --brass-glow: rgba(201, 162, 75, 0.16);
+
+    --teal: #3FBFAA;
+    --teal-soft: #2A8577;
+    --teal-glow: rgba(63, 191, 170, 0.16);
+
+    --danger: #E2694B;
+    --danger-glow: rgba(226, 105, 75, 0.14);
+    --danger-border: rgba(226, 105, 75, 0.4);
+    --danger-text: #F3C9BD;
+    --danger-text-strong: #FBDCD2;
+
+    --vignette: radial-gradient(ellipse 900px 500px at 50% -10%, rgba(201,162,75,0.06), transparent 60%);
+    --ledger-lines: repeating-linear-gradient(180deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 28px);
+
+    --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+    --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace;
+
+    --radius-lg: 14px;
+    --radius-md: 10px;
+    --radius-sm: 6px;
+
+    --accent: var(--brass);
+    --accent-fill: var(--brass-fill);
+    --accent-soft: var(--brass-soft);
+    --accent-glow: var(--brass-glow);
+  }
+
+  [data-mode="decrypt"] {
+    --accent: var(--teal);
+    --accent-fill: var(--teal-fill);
+    --accent-soft: var(--teal-soft);
+    --accent-glow: var(--teal-glow);
+  }
+
+  [data-theme="light"] {
+    --ink-950: #F3F1EA;
+    --ink-900: #FFFFFF;
+    --ink-800: #F3F1EA;
+    --ink-700: #EAE6D9;
+    --ink-600: #DDD8C8;
+    --line: #D9D4C4;
+    --line-soft: #E6E2D4;
+    --paper: #1B1E23;
+    --paper-dim: #52585F;
+    --paper-faint: #767C83;
+
+    --brass: #8A6D2E;
+    --brass-soft: #B08F45;
+    --brass-glow: rgba(138, 109, 46, 0.10);
+
+    --teal: #1F7A6C;
+    --teal-soft: #3FA391;
+    --teal-glow: rgba(31, 122, 108, 0.10);
+
+    --danger: #C1442A;
+    --danger-glow: rgba(193, 68, 42, 0.10);
+    --danger-border: rgba(193, 68, 42, 0.35);
+    --danger-text: #7A2415;
+    --danger-text-strong: #5C1B0F;
+
+    --vignette: none;
+    --ledger-lines: repeating-linear-gradient(180deg, rgba(0,0,0,0.025) 0px, rgba(0,0,0,0.025) 1px, transparent 1px, transparent 28px);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    background: var(--ink-950);
+    color: var(--paper);
+    font-family: var(--font-ui);
+    overflow-x: hidden;
+  }
+
+  body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    background-image:
+      var(--vignette),
+      var(--ledger-lines);
+    padding: clamp(20px, 6vw, 40px) clamp(12px, 4vw, 20px) clamp(40px, 8vw, 72px);
+  }
+
+  .app {
+    width: 100%;
+    max-width: min(1400px, 94vw);
+    margin: 0 auto;
+  }
+
+  /* ---------- Header ---------- */
+  .app-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .brand-seal {
+    flex: none;
+    width: 44px;
+    height: 44px;
+    color: var(--brass);
+  }
+
+  .brand-text { flex: 1; min-width: 0; }
+
+  .brand-text h1 {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin: 0;
+    color: var(--paper);
+  }
+
+  .theme-toggle-btn {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ink-800);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--paper-dim);
+    cursor: pointer;
+  }
+  .theme-toggle-btn:hover { color: var(--paper); border-color: var(--accent-soft); }
+  .theme-toggle-btn svg { width: 19px; height: 19px; }
+  .theme-toggle-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .brand-text .tagline {
+    margin: 2px 0 0;
+    font-size: 0.83rem;
+    color: var(--paper-dim);
+  }
+
+  /* ---------- Banner ---------- */
+  .banner {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 14px 16px;
+    border-radius: var(--radius-md);
+    font-size: 0.87rem;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+  }
+  .banner-danger {
+    background: var(--danger-glow);
+    border-color: var(--danger-border);
+    color: var(--danger-text);
+  }
+  .banner[hidden] { display: none; }
+
+  /* ---------- Toast ---------- */
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--ink-800);
+    border: 1px solid var(--line);
+    color: var(--paper);
+    padding: 12px 18px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.28);
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    max-width: min(92vw, 420px);
+    text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast[hidden] { display: none; }
+
+  /* ---------- Tabs ---------- */
+  .mode-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: var(--ink-900);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius-md);
+  }
+
+  .mode-tab {
+    flex: 1;
+    padding: 13px 16px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--paper-dim);
+    font-family: var(--font-ui);
+    font-size: 0.92rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  .mode-tab:hover { color: var(--paper); }
+
+  .mode-tab[aria-selected="true"][data-mode="encrypt"] {
+    background: var(--brass-glow);
+    color: var(--brass);
+  }
+  .mode-tab[aria-selected="true"][data-mode="decrypt"] {
+    background: var(--teal-glow);
+    color: var(--teal);
+  }
+
+  .mode-tab:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* ---------- Panel shell ---------- */
+  .panel {
+    background: var(--ink-900);
+    border: 1px solid var(--line-soft);
+    border-top: none;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    padding: 26px 24px 24px;
+  }
+
+  .mode-panel[hidden] { display: none; }
+
+  @keyframes panelEnter {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .panel-enter { animation: panelEnter 0.4s ease; }
+
+  /* ---------- Control row (input-type + operation pill groups) ---------- */
+  .control-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px 24px;
+    margin-bottom: 18px;
+  }
+  .control-group { flex: 1 1 180px; min-width: 0; }
+  .control-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--paper-faint);
+    margin-bottom: 8px;
+  }
+
+  /* ---------- Pill groups ---------- */
+  .pill-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 3px;
+    background: var(--ink-800);
+    border-radius: 999px;
+    max-width: 100%;
+  }
+
+  .pill {
+    padding: 8px 15px;
+    border-radius: 999px;
+    background: transparent;
+    border: none;
+    color: var(--paper-dim);
+    font-family: var(--font-ui);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+  .pill.active {
+    background: var(--accent-fill);
+    color: var(--ink-on-fill);
+  }
+  .pill:disabled { opacity: 0.45; cursor: not-allowed; }
+  .pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- Dropzone ---------- */
+  .input-area[hidden] { display: none; }
+
+  .dropzone {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 28px 20px;
+    background: var(--ink-800);
+    border: 1.5px dashed var(--line);
+    border-radius: var(--radius-md);
+    color: var(--paper-dim);
+    font-family: var(--font-ui);
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+  }
+  .dropzone:hover { border-color: var(--accent-soft); background: var(--ink-700); }
+  .dropzone:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .dropzone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+    transform: scale(1.01);
+  }
+  .dropzone:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .drop-icon { width: 26px; height: 26px; color: var(--paper-faint); margin-bottom: 2px; }
+  .dropzone.drag-over .drop-icon { color: var(--accent); }
+
+  .drop-title { display: block; margin: 0; font-size: 0.94rem; font-weight: 600; color: var(--paper); }
+  .drop-sub { display: block; margin: 0; font-size: 0.79rem; color: var(--paper-faint); }
+
+  /* ---------- File list (multi-file) ---------- */
+  .file-list-summary {
+    margin: 10px 2px 0;
+    font-size: 0.78rem;
+    color: var(--paper-faint);
+  }
+  .file-list-summary:empty { display: none; }
+
+  .file-list {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .file-list:empty { margin-top: 0; }
+
+  .file-list-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 8px 10px 14px;
+    background: var(--ink-800);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    animation: panelEnter 0.3s ease;
+  }
+  .file-list-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .file-list-name { color: var(--paper); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .file-list-size { color: var(--paper-dim); flex: none; }
+  .file-fingerprint {
+    flex: none;
+    font-size: 0.68rem;
+    color: var(--paper-faint);
+    cursor: pointer;
+    text-decoration: underline dotted;
+  }
+  .file-fingerprint:hover { color: var(--accent); }
+
+  .file-badge {
+    flex: none;
+    font-family: var(--font-ui);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--ink-700);
+    color: var(--paper-faint);
+  }
+  .file-badge.badge-locked { color: var(--teal); background: var(--teal-glow); }
+  .file-badge.badge-plain { color: var(--paper-dim); }
+  .file-badge.badge-invalid { color: var(--danger); background: var(--danger-glow); }
+  .file-badge.badge-verify-ok { color: #3FBFAA; background: rgba(63, 191, 170, 0.14); }
+  .file-badge.badge-verify-bad { color: var(--danger); background: var(--danger-glow); }
+
+  .file-list-reorder {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .file-list-move {
+    width: 22px;
+    height: 17px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--paper-faint);
+    cursor: pointer;
+    padding: 0;
+    border-radius: 4px;
+  }
+  .file-list-move svg { width: 13px; height: 13px; }
+  .file-list-move:hover { color: var(--paper); background: var(--ink-700); }
+  .file-list-move:disabled { opacity: 0.25; cursor: default; pointer-events: none; }
+  .file-list-item:first-child .file-list-move[data-dir="up"],
+  .file-list-item:last-child .file-list-move[data-dir="down"] {
+    opacity: 0.25;
+    pointer-events: none;
+  }
+
+  .file-list-remove {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--paper-faint);
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+  }
+  .file-list-remove:hover { color: var(--danger); }
+  .file-list-remove:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .keyfile-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .keyfile-chip { margin-top: 8px; }
+
+  .camera-btn { margin-top: 10px; width: 100%; justify-content: center; }
+
+  textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 120px;
+    background: var(--ink-800);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    color: var(--paper);
+    font-family: var(--font-ui);
+    font-size: 1rem;
+    line-height: 1.5;
+    padding: 14px;
+  }
+  textarea:focus-visible, textarea:focus {
+    outline: none;
+    border-color: var(--accent-soft);
+  }
+  textarea::placeholder { color: var(--paper-faint); }
+  textarea:disabled { opacity: 0.6; }
+
+  .select-input {
+    width: 100%;
+    background: var(--ink-800);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    color: var(--paper);
+    font-family: var(--font-ui);
+    font-size: 0.92rem;
+    padding: 11px 14px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%239BA3AD' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+  }
+  .select-input:focus, .select-input:focus-visible { outline: none; border-color: var(--accent-soft); }
+  .select-input:disabled { opacity: 0.6; cursor: default; }
+
+  .part-list {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .part-list-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--paper-dim);
+  }
+  .part-list-row button {
+    background: transparent;
+    border: none;
+    color: var(--paper-faint);
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 0.76rem;
+    flex: none;
+  }
+  .part-list-row button:hover { color: var(--accent); }
+
+  /* ---------- Field groups ---------- */
+  .password-section[hidden] { display: none; }
+  .field-group { margin-top: 18px; }
+  .field-group:first-child { margin-top: 0; }
+  .field-group label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--paper-dim);
+    margin-bottom: 7px;
+  }
+
+  .password-field {
+    position: relative;
+    display: flex;
+  }
+  .password-field input {
+    flex: 1;
+    width: 100%;
+    background: var(--ink-800);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    color: var(--paper);
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    padding: 12px 46px 12px 14px;
+  }
+  .password-field input::placeholder { color: var(--paper-faint); font-family: var(--font-ui); font-size: 0.88rem; }
+  .password-field input:focus, .password-field input:focus-visible {
+    outline: none;
+    border-color: var(--accent-soft);
+  }
+  .password-field input:disabled { opacity: 0.6; }
+
+  .toggle-visibility {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--paper-faint);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+  }
+  .toggle-visibility:hover { color: var(--paper); }
+  .toggle-visibility svg { width: 19px; height: 19px; }
+  .toggle-visibility:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .field-hint {
+    margin: 7px 2px 0;
+    font-size: 0.78rem;
+    color: var(--paper-faint);
+    min-height: 1.1em;
+  }
+  .field-hint.match-ok { color: var(--teal); }
+  .field-hint.match-bad { color: var(--danger); }
+
+  /* ---------- Strength meter ---------- */
+  .strength-meter {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 9px;
+  }
+  .strength-bar {
+    flex: 1;
+    height: 5px;
+    background: var(--ink-700);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .strength-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    background: var(--danger);
+    transition: width 0.3s ease, background 0.3s ease;
+  }
+  .strength-label {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--paper-faint);
+    min-width: 74px;
+    text-align: right;
+  }
+
+  .password-actions {
+    display: flex;
+    gap: 16px;
+    margin-top: 9px;
+    flex-wrap: wrap;
+  }
+  .link-btn {
+    background: transparent;
+    border: none;
+    padding: 2px 0;
+    color: var(--accent);
+    font-family: var(--font-ui);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .link-btn:hover { opacity: 0.8; }
+  .link-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .link-btn:disabled { opacity: 0.4; cursor: not-allowed; text-decoration: none; }
+
+  .recipients-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .recipient-row {
+    background: var(--ink-800);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    animation: panelEnter 0.25s ease;
+  }
+  .recipient-row-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--paper-dim);
+  }
+  .recipient-row-header button {
+    background: transparent;
+    border: none;
+    color: var(--paper-faint);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px 6px;
+  }
+  .recipient-row-header button:hover { color: var(--danger); }
+  .recipient-keyfile-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 0.78rem;
+    color: var(--paper-faint);
+  }
+
+  .decoy-caveat {
+    background: var(--danger-glow);
+    border: 1px solid var(--danger-border);
+    color: var(--danger-text);
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 12px;
+  }
+  .decoy-enable-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 4px;
+  }
+  .decoy-enable-row input { width: 17px; height: 17px; cursor: pointer; accent-color: var(--accent-fill); }
+  #encrypt-decoy-fields { margin-top: 12px; display: flex; flex-direction: column; gap: 14px; }
+
+  /* ---------- Advanced disclosure ---------- */
+  .advanced-details {
+    margin-top: 18px;
+    border-top: 1px dashed var(--line);
+    padding-top: 14px;
+  }
+  .advanced-details summary {
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--paper-dim);
+    list-style: none;
+  }
+  .advanced-details summary::-webkit-details-marker { display: none; }
+  .advanced-details summary::before {
+    content: '▸ ';
+    display: inline-block;
+    transition: transform 0.15s ease;
+  }
+  .advanced-details[open] summary::before { transform: rotate(90deg); }
+  .advanced-details .field-group { margin-top: 14px; }
+
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent-fill);
+    height: 20px;
+    background: transparent;
+  }
+
+  /* ---------- Buttons ---------- */
+  .primary-btn {
+    width: 100%;
+    margin-top: 22px;
+    padding: 14px 20px;
+    background: var(--accent-fill);
+    color: var(--ink-on-fill);
+    border: none;
+    border-radius: var(--radius-md);
+    font-family: var(--font-ui);
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: filter 0.15s ease, transform 0.1s ease, opacity 0.2s ease;
+  }
+  .primary-btn:hover:not(:disabled) { filter: brightness(1.08); }
+  .primary-btn:active:not(:disabled) { transform: scale(0.99); }
+  .primary-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .primary-btn:focus-visible { outline: 2px solid var(--paper); outline-offset: 2px; }
+
+  .secondary-btn {
+    padding: 10px 16px;
+    background: transparent;
+    color: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-ui);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 38px;
+  }
+  .secondary-btn:hover { border-color: var(--accent-soft); color: var(--accent); }
+
+  .decrypt-btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 22px;
+  }
+  .decrypt-btn-row .primary-btn { margin-top: 0; flex: 1; width: auto; }
+  .decrypt-btn-row .secondary-btn { flex: none; justify-content: center; }
+  @media (max-width: 480px) {
+    .decrypt-btn-row .secondary-btn { flex: 1; }
+  }
+  .secondary-btn svg { width: 15px; height: 15px; flex: none; }
+  .secondary-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .secondary-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .secondary-btn.accent-btn {
+    border-color: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  /* ---------- Process area ---------- */
+  .process-area { margin-top: 22px; }
+  .process-area[hidden] { display: none; }
+
+  .process-phase {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.8rem;
+    color: var(--paper-dim);
+    margin-bottom: 8px;
+    font-family: var(--font-ui);
+  }
+  .process-phase span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .process-phase .pct { font-family: var(--font-mono); color: var(--accent); flex: none; }
+
+  .progress-track {
+    height: 6px;
+    background: var(--ink-700);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent-fill);
+    border-radius: 999px;
+    transition: width 0.25s ease;
+  }
+  .progress-fill.indeterminate {
+    animation: pulseWidth 1.1s ease-in-out infinite;
+  }
+  @keyframes pulseWidth {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+  }
+
+  .cipher-ticker {
+    margin-top: 10px;
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.12em;
+    color: var(--paper-faint);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ---------- Error banner ---------- */
+  .error-banner {
+    margin-top: 20px;
+    padding: 13px 15px;
+    background: var(--danger-glow);
+    border: 1px solid var(--danger-border);
+    border-radius: var(--radius-md);
+    color: var(--danger-text);
+    font-size: 0.86rem;
+    line-height: 1.5;
+    animation: panelEnter 0.3s ease;
+  }
+  .error-banner[hidden] { display: none; }
+  .error-banner strong { color: var(--danger-text-strong); }
+
+  /* ---------- Results ---------- */
+  .results {
+    margin-top: 22px;
+    padding: 18px;
+    background: var(--ink-800);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    animation: panelEnter 0.4s ease;
+  }
+  .results[hidden] { display: none; }
+
+  .results-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .results-icon {
+    width: 28px;
+    height: 28px;
+    color: var(--accent);
+    flex: none;
+    animation: sealStamp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes sealStamp {
+    0% { opacity: 0; transform: scale(1.6) rotate(-10deg); }
+    60% { opacity: 1; }
+    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+
+  .results-title { font-weight: 700; font-size: 0.95rem; color: var(--paper); }
+  .results-subtitle { font-size: 0.78rem; color: var(--paper-dim); margin-top: 1px; }
+
+  .results-actions { margin-bottom: 14px; }
+  .results-actions[hidden] { display: none; }
+
+  .results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .result-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+    background: var(--ink-900);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    animation: panelEnter 0.3s ease;
+  }
+  .result-row[data-status="error"] { border-color: var(--danger-border); }
+
+  .result-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    margin-top: 1px;
+    color: var(--teal);
+  }
+  .result-row[data-status="error"] .result-icon { color: var(--danger); }
+  .result-icon svg { width: 100%; height: 100%; }
+
+  .result-thumb {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    margin-top: 1px;
+  }
+
+  .result-info { flex: 1; min-width: 0; }
+  .result-name {
+    font-family: var(--font-mono);
+    font-size: 0.83rem;
+    color: var(--paper);
+    overflow-wrap: break-word;
+  }
+  .result-stats {
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--paper-dim);
+    margin-top: 4px;
+  }
+  .result-fingerprint {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--paper-faint);
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .result-fingerprint button {
+    background: transparent;
+    border: none;
+    color: var(--paper-faint);
+    cursor: pointer;
+    padding: 1px 4px;
+    text-decoration: underline;
+    font-size: 0.7rem;
+  }
+  .result-fingerprint button:hover { color: var(--accent); }
+  .result-preview-wrap {
+    margin-top: 10px;
+    padding: 10px;
+    background: var(--ink-800);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+  }
+  .result-preview-media {
+    display: block;
+    max-width: 100%;
+    max-height: 360px;
+    border-radius: var(--radius-sm);
+  }
+  img.result-preview-media { margin: 0 auto; object-fit: contain; }
+  audio.result-preview-media, video.result-preview-media { width: 100%; }
+  .result-preview-pdf { width: 100%; height: 420px; border: none; }
+  .result-error {
+    font-size: 0.8rem;
+    color: var(--danger-text);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  .result-actions {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: stretch;
+  }
+
+  .result-text-wrap { margin-top: 10px; }
+  .result-text-wrap[hidden] { display: none; }
+  .result-text-wrap textarea {
+    background: var(--ink-800);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    min-height: 100px;
+  }
+  .text-result-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* ---------- Footer ---------- */
+  .disclaimer {
+    margin-top: 26px;
+    padding: 0 4px;
+    text-align: center;
+  }
+  .disclaimer p {
+    margin: 0 0 6px;
+    font-size: 0.78rem;
+    color: var(--paper-faint);
+    line-height: 1.6;
+  }
+  .disclaimer strong { color: var(--paper-dim); }
+  .tech-line {
+    font-family: var(--font-mono);
+    font-size: 0.7rem !important;
+    letter-spacing: 0.03em;
+    color: var(--paper-faint) !important;
+    opacity: 0.7;
+  }
+
+  @media (max-width: 480px) {
+    body { padding: 24px 10px 56px; }
+    .panel { padding: 18px 14px 18px; }
+    .brand-text h1 { font-size: 1.35rem; }
+    .control-row { gap: 14px; }
+    .result-row { flex-wrap: wrap; }
+    .result-actions { flex-direction: row; flex: 1 1 100%; }
+    .result-actions .secondary-btn { flex: 1; justify-content: center; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="app-header">
+    <svg class="brand-seal" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <circle cx="24" cy="24" r="21" stroke="currentColor" stroke-width="2"/>
+      <rect x="14.5" y="22" width="19" height="14" rx="2.5" stroke="currentColor" stroke-width="2"/>
+      <path d="M18 22v-5.2a6 6 0 0 1 12 0V22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="24" cy="28.5" r="1.8" fill="currentColor"/>
+    </svg>
+    <div class="brand-text">
+      <h1>SecureZip</h1>
+      <p class="tagline">Compress and encrypt, entirely on this device.</p>
+    </div>
+    <button type="button" class="theme-toggle-btn" id="theme-toggle-btn" aria-label="Switch to light theme">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.5v2.5M12 19v2.5M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2.5 12H5M19 12h2.5M4.2 19.8 6 18M18 6l1.8-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </button>
+  </header>
+
+  <div id="unsupported-banner" class="banner banner-danger" hidden role="alert">
+    <span>⚠</span>
+    <span id="unsupported-banner-text">Your browser is missing an API this tool needs (compression or Web Crypto). Try a recent version of Chrome, Edge, Firefox, or Safari.</span>
+  </div>
+
+  <nav class="mode-tabs" role="tablist" aria-label="Mode">
+    <button type="button" class="mode-tab" id="tab-encrypt" data-mode="encrypt" role="tab" aria-selected="true" aria-controls="panel-encrypt">Encrypt</button>
+    <button type="button" class="mode-tab" id="tab-decrypt" data-mode="decrypt" role="tab" aria-selected="false" aria-controls="panel-decrypt">Decrypt</button>
+  </nav>
+
+  <main class="panel" id="main-panel" data-mode="encrypt">
+
+    <!-- ============ ENCRYPT PANEL ============ -->
+    <section class="mode-panel panel-enter" id="panel-encrypt" data-panel="encrypt" role="tabpanel" aria-labelledby="tab-encrypt">
+
+      <div class="control-row">
+        <div class="control-group">
+          <span class="control-label">Input</span>
+          <div class="pill-group" role="group" aria-label="Input type">
+            <button type="button" class="pill active" id="input-toggle-file" data-input="file">File</button>
+            <button type="button" class="pill" id="input-toggle-text" data-input="text">Text</button>
+          </div>
+        </div>
+        <div class="control-group">
+          <span class="control-label">Operation</span>
+          <div class="pill-group" role="group" aria-label="Operation">
+            <button type="button" class="pill" id="op-toggle-compress" data-op="compress">Compress</button>
+            <button type="button" class="pill active" id="op-toggle-encrypt" data-op="encrypt">Encrypt</button>
+            <button type="button" class="pill" id="op-toggle-both" data-op="both">Both</button>
+          </div>
+        </div>
+        <div class="control-group" id="output-format-group" hidden>
+          <span class="control-label">Output</span>
+          <div class="pill-group" role="group" aria-label="Output format">
+            <button type="button" class="pill active" id="format-toggle-sxz" data-format="sxz">.sxz</button>
+            <button type="button" class="pill" id="format-toggle-gz" data-format="gz">Plain .gz</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-area" id="input-view-file" data-input-view="file">
+        <button type="button" class="dropzone" id="dropzone" aria-label="Choose one or more files to encrypt, or drop them here">
+          <svg class="drop-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          <span class="drop-title">Drop files here</span>
+          <span class="drop-sub">or tap to browse, or paste (Ctrl+V) — you can pick more than one</span>
+        </button>
+        <input type="file" id="file-input" class="visually-hidden" tabindex="-1" multiple />
+        <button type="button" class="secondary-btn camera-btn" id="camera-capture-btn">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="14" r="3.2" stroke="currentColor" stroke-width="1.6"/></svg>
+          Take a photo
+        </button>
+        <input type="file" id="camera-input" class="visually-hidden" tabindex="-1" accept="image/*" capture="environment" />
+        <button type="button" class="secondary-btn" id="folder-pick-btn" hidden>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          Choose folder
+        </button>
+        <input type="file" id="folder-input" class="visually-hidden" tabindex="-1" webkitdirectory multiple />
+        <div class="file-list-summary" id="file-list-summary"></div>
+        <div class="file-list" id="file-list"></div>
+      </div>
+
+      <div class="input-area" id="input-view-text" data-input-view="text" hidden>
+        <textarea id="text-input" placeholder="Paste or type the text you want to process…" rows="6"></textarea>
+      </div>
+
+      <div class="password-section" id="encrypt-password-section">
+        <div class="field-group">
+          <label for="encrypt-password">Password</label>
+          <div class="password-field">
+            <input type="password" id="encrypt-password" autocomplete="new-password" placeholder="Choose a strong password" />
+            <button type="button" class="toggle-visibility" data-target="encrypt-password" aria-label="Show password">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/></svg>
+            </button>
+          </div>
+          <div class="strength-meter">
+            <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
+            <span class="strength-label" id="strength-label"></span>
+          </div>
+          <div class="password-actions">
+            <button type="button" class="link-btn" id="password-generate-btn">Generate a strong password</button>
+            <button type="button" class="link-btn" id="password-copy-btn">Copy password</button>
+          </div>
+          <p class="field-hint" id="password-copy-hint"></p>
+        </div>
+
+        <div class="field-group">
+          <label for="encrypt-password-confirm">Confirm password</label>
+          <div class="password-field">
+            <input type="password" id="encrypt-password-confirm" autocomplete="new-password" placeholder="Re-enter password" />
+            <button type="button" class="toggle-visibility" data-target="encrypt-password-confirm" aria-label="Show password">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/></svg>
+            </button>
+          </div>
+          <p class="field-hint" id="password-match-hint">There is no password recovery — if it's lost, the data is unrecoverable.</p>
+        </div>
+
+        <div class="field-group">
+          <label>Keyfile (optional)</label>
+          <div class="keyfile-row" id="encrypt-keyfile-row">
+            <button type="button" class="secondary-btn" id="encrypt-keyfile-pick-btn">Choose file</button>
+            <button type="button" class="secondary-btn" id="encrypt-keyfile-gen-btn">Generate random keyfile</button>
+          </div>
+          <input type="file" id="encrypt-keyfile-input" class="visually-hidden" tabindex="-1" />
+          <div class="file-list-item keyfile-chip" id="encrypt-keyfile-chip" hidden>
+            <div class="file-list-main">
+              <span class="file-list-name" id="encrypt-keyfile-name"></span>
+              <span class="file-badge badge-locked">keyfile</span>
+            </div>
+            <button type="button" class="file-list-remove" id="encrypt-keyfile-remove" aria-label="Remove keyfile">×</button>
+          </div>
+          <p class="field-hint">A second secret, like a second factor — both the password AND this exact file are needed to decrypt. Losing either one loses the data.</p>
+        </div>
+
+        <div class="field-group" id="encrypt-recipients-section">
+          <div class="recipients-list" id="encrypt-recipients-list"></div>
+          <button type="button" class="link-btn" id="encrypt-add-recipient-btn">+ Add another recipient</button>
+          <p class="field-hint">Each recipient gets their own password (and optional keyfile) that unlocks the same content — good for sharing one file with a few people without sharing one password.</p>
+        </div>
+
+        <details class="advanced-details" id="encrypt-advanced-details">
+          <summary>Advanced</summary>
+          <div class="field-group">
+            <label for="encrypt-iterations-range">PBKDF2 iterations: <span id="encrypt-iterations-value">250,000</span></label>
+            <input type="range" id="encrypt-iterations-range" min="100000" max="1000000" step="50000" value="250000" />
+            <p class="field-hint">Higher is slower to brute-force, but also slower to encrypt and decrypt. 250,000 is a solid default.</p>
+          </div>
+        </details>
+
+        <details class="advanced-details" id="encrypt-decoy-details">
+          <summary>Add a decoy (advanced)</summary>
+          <p class="field-hint decoy-caveat">
+            A second, different password will reveal separate decoy content instead of your real file — useful as basic misdirection.
+            <strong>This is not true plausible deniability.</strong> Unlike a fixed-size hidden-volume tool, this archive's size can still
+            hint that it holds more than one payload to someone who examines it closely. Don't rely on this alone in a high-stakes situation.
+          </p>
+          <label class="decoy-enable-row">
+            <input type="checkbox" id="encrypt-decoy-enable" />
+            Enable decoy content
+          </label>
+          <div id="encrypt-decoy-fields" hidden>
+            <div class="field-group">
+              <label for="encrypt-decoy-text">Decoy content (text)</label>
+              <textarea id="encrypt-decoy-text" rows="4" placeholder="Something innocuous the decoy password will reveal…"></textarea>
+            </div>
+            <div class="field-group">
+              <label for="encrypt-decoy-password">Decoy password</label>
+              <div class="password-field">
+                <input type="password" id="encrypt-decoy-password" autocomplete="new-password" placeholder="A different password from the real one" />
+                <button type="button" class="toggle-visibility" data-target="encrypt-decoy-password" aria-label="Show password">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="field-group">
+              <label for="encrypt-decoy-password-confirm">Confirm decoy password</label>
+              <input type="password" id="encrypt-decoy-password-confirm" autocomplete="new-password" placeholder="Re-enter the decoy password" />
+              <p class="field-hint" id="decoy-password-match-hint"></p>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <details class="advanced-details" id="encrypt-split-details">
+        <summary>Split output into parts</summary>
+        <div class="field-group">
+          <label for="encrypt-split-select">Part size</label>
+          <select id="encrypt-split-select" class="select-input">
+            <option value="0">Don't split</option>
+            <option value="10485760">~10 MB per part (email-friendly)</option>
+            <option value="26214400">~25 MB per part</option>
+            <option value="52428800">~50 MB per part</option>
+            <option value="104857600">~100 MB per part</option>
+          </select>
+          <p class="field-hint">Useful for email limits or unstable connections. Only kicks in if the result is bigger than the chosen size — drop every part back in on the Decrypt side to reassemble. Works whether or not you're also encrypting.</p>
+        </div>
+      </details>
+
+      <button type="button" class="primary-btn" id="encrypt-btn" disabled>Encrypt</button>
+
+      <div class="process-area" id="encrypt-process" hidden aria-live="polite">
+        <div class="process-phase">
+          <span id="encrypt-phase-label">Working…</span>
+          <span class="pct" id="encrypt-phase-pct"></span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="encrypt-progress-fill"></div></div>
+        <div class="cipher-ticker" id="encrypt-ticker" aria-hidden="true"></div>
+      </div>
+
+      <div class="error-banner" id="encrypt-error" hidden role="alert"></div>
+
+      <div class="results" id="encrypt-results" hidden aria-live="polite">
+        <div class="results-header">
+          <svg class="results-icon" id="encrypt-results-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <circle cx="24" cy="24" r="21" stroke="currentColor" stroke-width="2"/>
+            <rect x="14.5" y="22" width="19" height="14" rx="2.5" stroke="currentColor" stroke-width="2"/>
+            <path d="M18 22v-5.2a6 6 0 0 1 12 0V22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="24" cy="28.5" r="1.8" fill="currentColor"/>
+          </svg>
+          <div>
+            <div class="results-title" id="encrypt-results-title">Sealed</div>
+            <div class="results-subtitle" id="encrypt-results-subtitle"></div>
+          </div>
+        </div>
+        <div class="results-actions" id="encrypt-download-all-wrap" hidden>
+          <button type="button" class="secondary-btn accent-btn" id="encrypt-download-all">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            Download all (.zip)
+          </button>
+        </div>
+        <div class="results-list" id="encrypt-results-list"></div>
+      </div>
+    </section>
+
+    <!-- ============ DECRYPT PANEL ============ -->
+    <section class="mode-panel" id="panel-decrypt" data-panel="decrypt" role="tabpanel" aria-labelledby="tab-decrypt" hidden>
+
+      <div class="control-row">
+        <div class="control-group">
+          <span class="control-label">Input</span>
+          <div class="pill-group" role="group" aria-label="Input type">
+            <button type="button" class="pill active" id="decrypt-input-toggle-file" data-input="file">File</button>
+            <button type="button" class="pill" id="decrypt-input-toggle-paste" data-input="paste">Paste text</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-area" id="input-view-decrypt-file" data-input-view="file">
+        <button type="button" class="dropzone" id="decrypt-dropzone" aria-label="Choose one or more .sxz or .zip files to decrypt, or drop them here">
+          <svg class="drop-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          <span class="drop-title">Drop .sxz, .zip, or .gz files here</span>
+          <span class="drop-sub">or tap to browse, or paste (Ctrl+V) — you can pick more than one</span>
+        </button>
+        <input type="file" id="decrypt-file-input" class="visually-hidden" tabindex="-1" accept=".sxz,.zip,.gz" multiple />
+        <div class="file-list-summary" id="decrypt-file-list-summary"></div>
+        <div class="file-list" id="decrypt-file-list"></div>
+      </div>
+
+      <div class="input-area" id="input-view-decrypt-paste" data-input-view="paste" hidden>
+        <textarea id="decrypt-paste-input" placeholder="Paste the base64 text you got from &quot;Copy as text&quot;…" rows="6"></textarea>
+      </div>
+
+      <div class="field-group">
+        <label for="decrypt-password">Password</label>
+        <div class="password-field">
+          <input type="password" id="decrypt-password" autocomplete="current-password" placeholder="Only needed for encrypted files" />
+          <button type="button" class="toggle-visibility" data-target="decrypt-password" aria-label="Show password">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/></svg>
+          </button>
+        </div>
+        <p class="field-hint">Files that are compressed only (not encrypted) will open without one.</p>
+      </div>
+
+      <div class="field-group">
+        <label>Keyfile</label>
+        <div class="keyfile-row" id="decrypt-keyfile-row">
+          <button type="button" class="secondary-btn" id="decrypt-keyfile-pick-btn">Choose file</button>
+        </div>
+        <input type="file" id="decrypt-keyfile-input" class="visually-hidden" tabindex="-1" />
+        <div class="file-list-item keyfile-chip" id="decrypt-keyfile-chip" hidden>
+          <div class="file-list-main">
+            <span class="file-list-name" id="decrypt-keyfile-name"></span>
+            <span class="file-badge badge-locked">keyfile</span>
+          </div>
+          <button type="button" class="file-list-remove" id="decrypt-keyfile-remove" aria-label="Remove keyfile">×</button>
+        </div>
+        <p class="field-hint">Only needed for files that were encrypted with a keyfile.</p>
+      </div>
+
+      <div class="decrypt-btn-row">
+        <button type="button" class="primary-btn" id="decrypt-btn" disabled>Decrypt</button>
+        <button type="button" class="secondary-btn" id="decrypt-verify-btn" disabled title="Check the password/keyfile without downloading anything">Verify only</button>
+      </div>
+      <p class="field-hint" id="decrypt-verify-hint"></p>
+
+      <div class="process-area" id="decrypt-process" hidden aria-live="polite">
+        <div class="process-phase">
+          <span id="decrypt-phase-label">Working…</span>
+          <span class="pct" id="decrypt-phase-pct"></span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="decrypt-progress-fill"></div></div>
+        <div class="cipher-ticker" id="decrypt-ticker" aria-hidden="true"></div>
+      </div>
+
+      <div class="error-banner" id="decrypt-error" hidden role="alert"></div>
+
+      <div class="results" id="decrypt-results" hidden aria-live="polite">
+        <div class="results-header">
+          <svg class="results-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <circle cx="24" cy="24" r="21" stroke="currentColor" stroke-width="2"/>
+            <rect x="14.5" y="22" width="19" height="14" rx="2.5" stroke="currentColor" stroke-width="2"/>
+            <path d="M18 21.5v-4.7a6 6 0 0 1 11-3.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="24" cy="28.5" r="1.8" fill="currentColor"/>
+          </svg>
+          <div>
+            <div class="results-title">Restored</div>
+            <div class="results-subtitle" id="decrypt-results-subtitle"></div>
+          </div>
+        </div>
+        <div class="results-actions" id="decrypt-download-all-wrap" hidden>
+          <button type="button" class="secondary-btn accent-btn" id="decrypt-download-all">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            Download all (.zip)
+          </button>
+        </div>
+        <div class="results-list" id="decrypt-results-list"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="disclaimer">
+    <p><strong>Everything happens locally.</strong> Files and passwords never leave this browser tab — there is no server, no upload, no analytics.</p>
+    <p class="tech-line">AES-256-GCM · PBKDF2-SHA-256 (250,000 iterations) · gzip via CompressionStream</p>
+    <p class="tech-line">Password fields, keyfiles, and decrypted results auto-clear after 5 minutes idle, or shortly after this tab is hidden.</p>
+  </footer>
+
+  <div class="toast" id="global-toast" hidden role="status" aria-live="polite"></div>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* =========================================================
+     Constants & low-level helpers
+  ========================================================= */
+  const ITERATIONS_DEFAULT = 250000;
+  const ITERATIONS_MIN = 100000;
+  const ITERATIONS_MAX = 1000000;
+  const MAGIC = new Uint8Array([0x53, 0x58, 0x5A, 0x31]); // "SXZ1"
+  const CURRENT_VERSION = 2;
+  const LEGACY_VERSION = 1;
+  const MULTIVOL_VERSION = 3;
+  const FLAG_COMPRESSED = 0x01;
+  const FLAG_ENCRYPTED = 0x02;
+  const FLAG_KEYFILE = 0x04;
+  const CEK_LEN = 32;              // AES-256 raw content-encryption-key length
+  const WRAPPED_CEK_LEN = 32 + 16; // CEK + GCM tag, always this exact size
+  const MAX_SLOTS_PER_VOLUME = 8;
+  const MAX_VOLUMES = 2;
+
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function u32le(n) {
+    const b = new Uint8Array(4);
+    new DataView(b.buffer).setUint32(0, n, true);
+    return b;
+  }
+  function readU32le(bytes, offset) {
+    return new DataView(bytes.buffer, bytes.byteOffset + offset, 4).getUint32(0, true);
+  }
+
+  function concatChunks(chunks, totalLen) {
+    const out = new Uint8Array(totalLen);
+    let offset = 0;
+    for (const c of chunks) { out.set(c, offset); offset += c.byteLength; }
+    return out;
+  }
+  function concatTwo(a, b) {
+    const out = new Uint8Array(a.byteLength + b.byteLength);
+    out.set(a, 0);
+    out.set(b, a.byteLength);
+    return out;
+  }
+
+  async function readAllChunks(readableStream) {
+    const reader = readableStream.getReader();
+    const chunks = [];
+    let total = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      total += value.byteLength;
+    }
+    return concatChunks(chunks, total);
+  }
+
+  function prependStream(prefixChunk, sourceStream) {
+    const reader = sourceStream.getReader();
+    let prefixSent = false;
+    return new ReadableStream({
+      async pull(controller) {
+        if (!prefixSent) {
+          prefixSent = true;
+          controller.enqueue(prefixChunk);
+          return;
+        }
+        const { done, value } = await reader.read();
+        if (done) { controller.close(); return; }
+        controller.enqueue(value);
+      },
+      cancel(reason) { try { reader.cancel(reason); } catch (e) {} }
+    });
+  }
+
+  function formatBytes(n) {
+    if (n === 0) return '0 B';
+    if (n < 0) n = 0;
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.min(units.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
+    const val = n / Math.pow(1024, i);
+    return `${val.toFixed(i === 0 ? 0 : 2)} ${units[i]}`;
+  }
+
+  function nowStamp() {
+    return new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
+  }
+
+  function sanitizeFilename(name) {
+    return String(name).replace(/[\/\\:*?"<>|\s]+/g, '_').slice(0, 180) || 'file';
+  }
+
+  /* Like sanitizeFilename, but preserves '/' as a folder separator (used for
+     zip bundle entries so folder-drop structure survives inside the zip).
+     Strips '..' segments and leading slashes to avoid zip-slip issues. */
+  function sanitizeZipPath(name) {
+    const segments = String(name).replace(/\\/g, '/').split('/').filter((seg) => seg && seg !== '.' && seg !== '..');
+    return segments.map((seg) => seg.replace(/[:*?"<>|\s]+/g, '_').slice(0, 100)).join('/').slice(0, 400) || 'file';
+  }
+
+  /* =========================================================
+     Feature detection
+  ========================================================= */
+  const compressionOK = typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined';
+  const cryptoOK = !!(window.isSecureContext && window.crypto && window.crypto.subtle);
+  const featuresOK = compressionOK && cryptoOK;
+
+  (function showCapabilityBanner() {
+    if (compressionOK && cryptoOK) return;
+    const banner = document.getElementById('unsupported-banner');
+    const textEl = document.getElementById('unsupported-banner-text');
+    let msg;
+    if (!compressionOK && !cryptoOK) {
+      msg = 'Your browser is missing APIs this tool needs (compression and Web Crypto). Try a recent version of Chrome, Edge, Firefox, or Safari.';
+    } else if (!cryptoOK) {
+      if (!window.isSecureContext) {
+        msg = 'Web Crypto is blocked because this page isn\'t running in a "secure context" — this commonly happens when opening the file directly in Firefox. Compress-only mode still works here. For Encrypt too, try Chrome or Edge, or serve this file over HTTPS or http://localhost.';
+      } else {
+        msg = 'Your browser is missing the Web Crypto API, so Encrypt/Decrypt-with-password won\'t work. Compress-only mode still works. Try a recent version of Chrome, Edge, or Safari for full functionality.';
+      }
+    } else {
+      msg = 'Your browser is missing the compression API this tool needs, so Compress mode won\'t work. Encrypt-only still works. Try a recent version of Chrome, Edge, Firefox, or Safari for full functionality.';
+    }
+    textEl.textContent = msg;
+    banner.hidden = false;
+  })();
+
+  /* =========================================================
+     Payload assembly / extraction (metadata + optional compression)
+  ========================================================= */
+  async function assemblePayload(meta, source, totalBytes, doCompress, onProgress) {
+    const metaJson = new TextEncoder().encode(JSON.stringify(meta));
+    const lenPrefix = u32le(metaJson.byteLength);
+    const metaChunk = new Uint8Array(4 + metaJson.byteLength);
+    metaChunk.set(lenPrefix, 0);
+    metaChunk.set(metaJson, 4);
+
+    const totalWithMeta = totalBytes + metaChunk.byteLength;
+    let seen = 0;
+
+    const progressTransform = new TransformStream({
+      transform(chunk, controller) {
+        seen += chunk.byteLength;
+        if (onProgress) onProgress(Math.min(seen / Math.max(totalWithMeta, 1), 1));
+        controller.enqueue(chunk);
+      }
+    });
+
+    const sourceStream = (source instanceof File) ? source.stream() : new Blob([source]).stream();
+    const combined = prependStream(metaChunk, sourceStream);
+    let pipeline = combined.pipeThrough(progressTransform);
+    if (doCompress) {
+      if (!compressionOK) {
+        throw new SecureZipError('NO_COMPRESSION', "Compression isn't available in this browser (see the notice at the top of the page).");
+      }
+      pipeline = pipeline.pipeThrough(new CompressionStream('gzip'));
+    }
+    return readAllChunks(pipeline);
+  }
+
+  async function extractPayload(bytes, doDecompress, onProgress) {
+    if (!doDecompress) {
+      if (onProgress) onProgress(1);
+      return bytes;
+    }
+    if (!compressionOK) {
+      throw new SecureZipError('NO_COMPRESSION', "Decompression isn't available in this browser (see the notice at the top of the page).");
+    }
+    let seen = 0;
+    const total = Math.max(bytes.byteLength, 1);
+    const progressTransform = new TransformStream({
+      transform(chunk, controller) {
+        seen += chunk.byteLength;
+        if (onProgress) onProgress(Math.min(seen / total, 1));
+        controller.enqueue(chunk);
+      }
+    });
+    const stream = new Blob([bytes]).stream()
+      .pipeThrough(progressTransform)
+      .pipeThrough(new DecompressionStream('gzip'));
+    return readAllChunks(stream);
+  }
+
+  /* =========================================================
+     Crypto
+  ========================================================= */
+
+  /* Combines password + optional keyfile into the raw material fed to PBKDF2.
+     With no keyfile, this is byte-identical to the original (pre-keyfile)
+     behavior, which is essential for backward compatibility with existing files. */
+  async function buildKeyMaterial(password, keyfileBytes) {
+    const pwBytes = new TextEncoder().encode(password);
+    if (!keyfileBytes || keyfileBytes.byteLength === 0) return pwBytes;
+    if (!cryptoOK) {
+      throw new SecureZipError('NO_CRYPTO', "Web Crypto isn't available in this context (see the notice at the top of the page).");
+    }
+    const lenPrefix = u32le(pwBytes.byteLength);
+    const combined = new Uint8Array(4 + pwBytes.byteLength + keyfileBytes.byteLength);
+    combined.set(lenPrefix, 0);
+    combined.set(pwBytes, 4);
+    combined.set(keyfileBytes, 4 + pwBytes.byteLength);
+    const hash = await crypto.subtle.digest('SHA-256', combined);
+    return new Uint8Array(hash);
+  }
+
+  async function deriveKey(keyMaterialBytes, salt, iterations) {
+    if (!cryptoOK) {
+      throw new SecureZipError('NO_CRYPTO', "Web Crypto isn't available in this context (see the notice at the top of the page).");
+    }
+    const baseKey = await crypto.subtle.importKey(
+      'raw', keyMaterialBytes, 'PBKDF2', false, ['deriveKey']
+    );
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+      baseKey,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  }
+
+  /* =========================================================
+     Header (v2 flexible format + v1 legacy read-compatibility)
+  ========================================================= */
+  function buildHeaderV2(flags, salt, iv, iterations) {
+    const encrypted = !!(flags & FLAG_ENCRYPTED);
+    const len = 4 + 1 + 1 + (encrypted ? (4 + 16 + 12) : 0);
+    const header = new Uint8Array(len);
+    header.set(MAGIC, 0);
+    header[4] = CURRENT_VERSION;
+    header[5] = flags;
+    if (encrypted) {
+      header.set(u32le(iterations), 6);
+      header.set(salt, 10);
+      header.set(iv, 26);
+    }
+    return header;
+  }
+
+  class SecureZipError extends Error {
+    constructor(code, message) { super(message); this.code = code; }
+  }
+
+  /* =========================================================
+     Multi-volume container (v3) — powers both multi-recipient
+     encryption and decoy/deniable volumes with one mechanism.
+
+     Layout:
+       MAGIC(4) version(1)=3 flags(1) volumeCount(1)
+       for each volume:
+         slotCount(1)
+         for each slot: salt(16) iterations(4) slotIv(12) wrappedCek(48)
+         volumeIv(12) cipherLen(4) paddedLen(4) cipher+padding(paddedLen)
+
+     Each volume has its own random content key (CEK). Every recipient
+     "slot" independently wraps that same CEK under a password/keyfile
+     derived key — that's what makes multi-recipient efficient (the
+     large payload is only ever encrypted once per volume).
+
+     A decoy archive is just 2 volumes, each with its own CEK and its
+     own independent payload. Decrypting tries the given password
+     against every slot in every volume (in parallel, so timing
+     doesn't hint at which one matched) and returns whichever payload
+     unlocked — with no indication to the caller how many volumes
+     exist in total.
+  ========================================================= */
+
+  function generateCek() {
+    return crypto.getRandomValues(new Uint8Array(CEK_LEN));
+  }
+
+  async function wrapCekForSlot(cek, password, keyfileBytes, iterations) {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const slotIv = crypto.getRandomValues(new Uint8Array(12));
+    const keyMaterial = await buildKeyMaterial(password, keyfileBytes);
+    const slotKey = await deriveKey(keyMaterial, salt, iterations);
+    const wrappedBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: slotIv }, slotKey, cek);
+    return { salt, iterations, slotIv, wrapped: new Uint8Array(wrappedBuf) };
+  }
+
+  async function tryUnwrapCek(slot, password, keyfileBytes) {
+    try {
+      const keyMaterial = await buildKeyMaterial(password, keyfileBytes);
+      const slotKey = await deriveKey(keyMaterial, slot.salt, slot.iterations);
+      const cekBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: slot.slotIv }, slotKey, slot.wrapped);
+      return new Uint8Array(cekBuf);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /* volumes: [{ plaintext: Uint8Array, iterations, recipients: [{password, keyfileBytes}] }, ...]
+     padSizes: when true (2+ volumes), every volume's ciphertext is padded with
+     random trailing bytes up to the size of the largest one, so an observer
+     can't tell which volume (if any) is the "real" one purely from its length. */
+  async function buildV3Container(volumes, flags, padSizes) {
+    const header = new Uint8Array(4 + 1 + 1 + 1);
+    header.set(MAGIC, 0);
+    header[4] = MULTIVOL_VERSION;
+    header[5] = flags;
+    header[6] = volumes.length;
+
+    const encryptedVolumes = [];
+    for (const vol of volumes) {
+      const cek = generateCek();
+      const volumeIv = crypto.getRandomValues(new Uint8Array(12));
+      const cekKey = await crypto.subtle.importKey('raw', cek, 'AES-GCM', false, ['encrypt']);
+      const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: volumeIv }, cekKey, vol.plaintext);
+      encryptedVolumes.push({
+        cek, volumeIv, cipherBytes: new Uint8Array(cipherBuf),
+        recipients: vol.recipients, iterations: vol.iterations
+      });
+    }
+
+    const maxLen = padSizes ? Math.max(...encryptedVolumes.map((v) => v.cipherBytes.byteLength)) : 0;
+
+    const chunks = [header];
+    for (const ev of encryptedVolumes) {
+      chunks.push(new Uint8Array([ev.recipients.length]));
+      for (const r of ev.recipients) {
+        const { salt, iterations, slotIv, wrapped } = await wrapCekForSlot(ev.cek, r.password, r.keyfileBytes || null, ev.iterations);
+        const slotBuf = new Uint8Array(16 + 4 + 12 + WRAPPED_CEK_LEN);
+        slotBuf.set(salt, 0);
+        slotBuf.set(u32le(iterations), 16);
+        slotBuf.set(slotIv, 20);
+        slotBuf.set(wrapped, 32);
+        chunks.push(slotBuf);
+      }
+      const paddedLen = padSizes ? maxLen : ev.cipherBytes.byteLength;
+      const padding = paddedLen > ev.cipherBytes.byteLength
+        ? crypto.getRandomValues(new Uint8Array(paddedLen - ev.cipherBytes.byteLength))
+        : new Uint8Array(0);
+      const footer = new Uint8Array(12 + 4 + 4);
+      footer.set(ev.volumeIv, 0);
+      footer.set(u32le(ev.cipherBytes.byteLength), 12);
+      footer.set(u32le(paddedLen), 16);
+      chunks.push(footer, ev.cipherBytes, padding);
+    }
+
+    let totalLen = 0;
+    for (const c of chunks) totalLen += c.byteLength;
+    const out = new Uint8Array(totalLen);
+    let offset = 0;
+    for (const c of chunks) { out.set(c, offset); offset += c.byteLength; }
+    return out;
+  }
+
+  function parseV3Container(fileBytes) {
+    if (fileBytes.byteLength < 7) {
+      throw new SecureZipError('TOO_SMALL', 'This file is too small or incomplete to be a valid SecureZip file.');
+    }
+    const flags = fileBytes[5];
+    const volumeCount = fileBytes[6];
+    if (volumeCount < 1 || volumeCount > MAX_VOLUMES) {
+      throw new SecureZipError('BAD_VERSION', 'This file has an unexpected internal structure.');
+    }
+    let offset = 7;
+    const volumes = [];
+    for (let v = 0; v < volumeCount; v++) {
+      if (offset + 1 > fileBytes.byteLength) throw new SecureZipError('TOO_SMALL', 'This file is truncated.');
+      const slotCount = fileBytes[offset]; offset += 1;
+      if (slotCount < 1 || slotCount > MAX_SLOTS_PER_VOLUME) {
+        throw new SecureZipError('BAD_VERSION', 'This file has an unexpected internal structure.');
+      }
+      const slots = [];
+      const slotLen = 16 + 4 + 12 + WRAPPED_CEK_LEN;
+      for (let s = 0; s < slotCount; s++) {
+        if (offset + slotLen > fileBytes.byteLength) throw new SecureZipError('TOO_SMALL', 'This file is truncated.');
+        const salt = fileBytes.slice(offset, offset + 16);
+        const iterations = readU32le(fileBytes, offset + 16);
+        const slotIv = fileBytes.slice(offset + 20, offset + 32);
+        const wrapped = fileBytes.slice(offset + 32, offset + 32 + WRAPPED_CEK_LEN);
+        slots.push({ salt, iterations, slotIv, wrapped });
+        offset += slotLen;
+      }
+      if (offset + 12 + 4 + 4 > fileBytes.byteLength) throw new SecureZipError('TOO_SMALL', 'This file is truncated.');
+      const volumeIv = fileBytes.slice(offset, offset + 12); offset += 12;
+      const cipherLen = readU32le(fileBytes, offset); offset += 4;
+      const paddedLen = readU32le(fileBytes, offset); offset += 4;
+      if (offset + paddedLen > fileBytes.byteLength || paddedLen < cipherLen) {
+        throw new SecureZipError('TOO_SMALL', 'This file is truncated.');
+      }
+      const cipherBytes = fileBytes.slice(offset, offset + cipherLen);
+      offset += paddedLen;
+      volumes.push({ slots, volumeIv, cipherBytes });
+    }
+    return { flags, volumeCount, volumes };
+  }
+
+  /* Tries `password`(+keyfile) against every slot in every volume concurrently
+     and returns the first volume that unlocks, without revealing how many
+     volumes/slots existed in total. Returns null if nothing matched. */
+  async function decryptV3Container(parsed, password, keyfileBytes) {
+    const attempts = [];
+    for (const vol of parsed.volumes) {
+      for (const slot of vol.slots) {
+        attempts.push((async () => {
+          const cek = await tryUnwrapCek(slot, password, keyfileBytes);
+          if (!cek) return null;
+          try {
+            const cekKey = await crypto.subtle.importKey('raw', cek, 'AES-GCM', false, ['decrypt']);
+            const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: vol.volumeIv }, cekKey, vol.cipherBytes);
+            return new Uint8Array(plainBuf);
+          } catch (e) {
+            return null;
+          }
+        })());
+      }
+    }
+    const results = await Promise.all(attempts);
+    return results.find((r) => r !== null) || null;
+  }
+
+  function parseHeader(fileBytes) {
+    if (fileBytes.byteLength < 5) {
+      throw new SecureZipError('TOO_SMALL', 'This file is too small or incomplete to be a valid .sxz file.');
+    }
+    for (let i = 0; i < 4; i++) {
+      if (fileBytes[i] !== MAGIC[i]) {
+        throw new SecureZipError('BAD_MAGIC', "This doesn't look like a SecureZip (.sxz) file.");
+      }
+    }
+    const version = fileBytes[4];
+
+    if (version === LEGACY_VERSION) {
+      const LEGACY_HEADER_LEN = 4 + 1 + 4 + 16 + 12; // 37
+      if (fileBytes.byteLength < LEGACY_HEADER_LEN + 16) {
+        throw new SecureZipError('TOO_SMALL', 'This file is too small or incomplete to be a valid .sxz file.');
+      }
+      const iterations = readU32le(fileBytes, 5);
+      if (iterations < 1000 || iterations > 5000000) {
+        throw new SecureZipError('BAD_ITERATIONS', 'This file has an invalid iteration count and cannot be processed.');
+      }
+      const salt = fileBytes.slice(9, 25);
+      const iv = fileBytes.slice(25, 37);
+      return { flags: FLAG_COMPRESSED | FLAG_ENCRYPTED, salt, iv, iterations, dataStart: LEGACY_HEADER_LEN };
+    }
+
+    if (version === CURRENT_VERSION) {
+      if (fileBytes.byteLength < 6) {
+        throw new SecureZipError('TOO_SMALL', 'This file is too small or incomplete to be a valid .sxz file.');
+      }
+      const flags = fileBytes[5];
+      const encrypted = !!(flags & FLAG_ENCRYPTED);
+      if (!encrypted) {
+        return { flags, salt: null, iv: null, iterations: null, dataStart: 6 };
+      }
+      const HEADER_LEN = 6 + 4 + 16 + 12; // 38
+      if (fileBytes.byteLength < HEADER_LEN + 16) {
+        throw new SecureZipError('TOO_SMALL', 'This file is too small or incomplete to be a valid .sxz file.');
+      }
+      const iterations = readU32le(fileBytes, 6);
+      if (iterations < 1000 || iterations > 5000000) {
+        throw new SecureZipError('BAD_ITERATIONS', 'This file has an invalid iteration count and cannot be processed.');
+      }
+      const salt = fileBytes.slice(10, 26);
+      const iv = fileBytes.slice(26, 38);
+      return { flags, salt, iv, iterations, dataStart: HEADER_LEN };
+    }
+
+    throw new SecureZipError('BAD_VERSION', 'This file was created with an unsupported version of SecureZip.');
+  }
+
+  /* Lightweight best-effort peek used by the UI to badge files before processing */
+  async function peekSxzInfo(headBytes) {
+    try {
+      if (headBytes.byteLength < 5) return { valid: false };
+      for (let i = 0; i < 4; i++) if (headBytes[i] !== MAGIC[i]) return { valid: false };
+      const version = headBytes[4];
+      if (version === LEGACY_VERSION) {
+        return { valid: true, needsPassword: true, compressed: true, needsKeyfile: false };
+      }
+      if (version === CURRENT_VERSION) {
+        if (headBytes.byteLength < 6) return { valid: false };
+        const flags = headBytes[5];
+        return {
+          valid: true,
+          needsPassword: !!(flags & FLAG_ENCRYPTED),
+          compressed: !!(flags & FLAG_COMPRESSED),
+          needsKeyfile: !!(flags & FLAG_KEYFILE)
+        };
+      }
+      if (version === MULTIVOL_VERSION) {
+        if (headBytes.byteLength < 6) return { valid: false };
+        const flags = headBytes[5];
+        // Deliberately doesn't say "multi-recipient" or "decoy" here — a file
+        // badge that reveals that would defeat the point for decoy volumes.
+        return { valid: true, needsPassword: true, compressed: !!(flags & FLAG_COMPRESSED), needsKeyfile: false };
+      }
+      return { valid: false };
+    } catch (e) {
+      return { valid: false };
+    }
+  }
+
+  /* =========================================================
+     Pipelines
+  ========================================================= */
+  async function runEncryptPipeline(password, meta, source, totalBytes, operation, iterations, keyfileBytes, onPhase) {
+    onPhase('assemble', 0);
+    const assembled = await assemblePayload(meta, source, totalBytes, operation.compress, (f) => onPhase('assemble', f));
+
+    const useKeyfile = !!(operation.encrypt && keyfileBytes && keyfileBytes.byteLength > 0);
+    let salt = null, iv = null, outputBytes;
+    if (operation.encrypt) {
+      onPhase('derive', null);
+      salt = crypto.getRandomValues(new Uint8Array(16));
+      iv = crypto.getRandomValues(new Uint8Array(12));
+      const keyMaterial = await buildKeyMaterial(password, useKeyfile ? keyfileBytes : null);
+      const key = await deriveKey(keyMaterial, salt, iterations);
+
+      onPhase('encrypt', null);
+      const ciphertextBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, assembled);
+      outputBytes = new Uint8Array(ciphertextBuf);
+    } else {
+      outputBytes = assembled;
+    }
+
+    onPhase('finalize', null);
+    const flags = (operation.compress ? FLAG_COMPRESSED : 0) | (operation.encrypt ? FLAG_ENCRYPTED : 0) | (useKeyfile ? FLAG_KEYFILE : 0);
+    const header = buildHeaderV2(flags, salt, iv, operation.encrypt ? iterations : null);
+    const out = concatTwo(header, outputBytes);
+
+    onPhase('done', 1);
+    return {
+      out,
+      originalSize: totalBytes,
+      assembledSize: assembled.byteLength,
+      finalSize: out.byteLength,
+      didCompress: operation.compress,
+      didEncrypt: operation.encrypt,
+      usedKeyfile: useKeyfile
+    };
+  }
+
+  /* Used instead of runEncryptPipeline whenever there's more than one
+     recipient and/or a decoy is enabled. Builds a v3 multi-volume
+     container: one "primary" volume (the real content, wrapped for every
+     recipient) plus an optional second "decoy" volume with its own
+     independent password and content. */
+  async function runMultiVolumeEncryptPipeline(recipients, meta, source, totalBytes, operation, iterations, decoyConfig, onPhase) {
+    onPhase('assemble', 0);
+    const assembled = await assemblePayload(meta, source, totalBytes, operation.compress, (f) => onPhase('assemble', f));
+
+    const usedKeyfile = recipients.some((r) => r.keyfileBytes && r.keyfileBytes.byteLength > 0);
+    const volumes = [{
+      plaintext: assembled,
+      iterations,
+      recipients: recipients.map((r) => ({ password: r.password, keyfileBytes: r.keyfileBytes || null }))
+    }];
+
+    if (decoyConfig) {
+      const decoyBytes = new TextEncoder().encode(decoyConfig.text);
+      const decoyMeta = { name: 'note.txt', kind: 'text', mime: 'text/plain', size: decoyBytes.byteLength };
+      const decoyAssembled = await assemblePayload(decoyMeta, decoyBytes, decoyBytes.byteLength, operation.compress, () => {});
+      volumes.push({
+        plaintext: decoyAssembled,
+        iterations: decoyConfig.iterations,
+        recipients: [{ password: decoyConfig.password, keyfileBytes: null }]
+      });
+    }
+
+    onPhase('derive', null);
+    onPhase('encrypt', null);
+    const flags = operation.compress ? FLAG_COMPRESSED : 0;
+    const out = await buildV3Container(volumes, flags, volumes.length > 1);
+
+    onPhase('finalize', null);
+    onPhase('done', 1);
+    return {
+      out,
+      originalSize: totalBytes,
+      assembledSize: assembled.byteLength,
+      finalSize: out.byteLength,
+      didCompress: operation.compress,
+      didEncrypt: true,
+      usedKeyfile,
+      recipientCount: recipients.length,
+      hasDecoy: !!decoyConfig
+    };
+  }
+
+  /* Shared tail used by both the classic (v1/v2) and multi-volume (v3)
+     decrypt paths: decompress the assembled payload if needed, then
+     pull the length-prefixed metadata JSON + raw data back apart. */
+  async function finalizeDecryptedPayload(assembled, doDecompress, onPhase) {
+    onPhase('decompress', 0);
+    let payload;
+    if (doDecompress) {
+      try {
+        payload = await extractPayload(assembled, true, (f) => onPhase('decompress', f));
+      } catch (e) {
+        throw new SecureZipError('BAD_ARCHIVE', 'The decrypted data could not be decompressed. The archive may be corrupted.');
+      }
+    } else {
+      payload = assembled;
+      onPhase('decompress', 1);
+    }
+
+    onPhase('finalize', null);
+    let meta, data;
+    try {
+      if (payload.byteLength < 4) throw new Error('short');
+      const metaLen = readU32le(payload, 0);
+      if (metaLen > payload.byteLength - 4) throw new Error('bad length');
+      const metaJson = new TextDecoder().decode(payload.slice(4, 4 + metaLen));
+      meta = JSON.parse(metaJson);
+      data = payload.slice(4 + metaLen);
+    } catch (e) {
+      throw new SecureZipError('BAD_ARCHIVE', 'The decrypted data is malformed. The archive may be corrupted.');
+    }
+    return { meta, data };
+  }
+
+  function hasMagicBytes(fileBytes) {
+    if (fileBytes.byteLength < 5) return false;
+    for (let i = 0; i < 4; i++) if (fileBytes[i] !== MAGIC[i]) return false;
+    return true;
+  }
+
+  async function runDecryptPipeline(password, fileBytes, keyfileBytes, onPhase) {
+    onPhase('parse', null);
+
+    if (hasMagicBytes(fileBytes) && fileBytes[4] === MULTIVOL_VERSION) {
+      const parsedV3 = parseV3Container(fileBytes);
+      onPhase('derive', null);
+      onPhase('decrypt', null);
+      const assembled = await decryptV3Container(parsedV3, password, keyfileBytes);
+      if (!assembled) {
+        throw new SecureZipError('AUTH_FAILED', 'Decryption failed. This usually means the password (or keyfile) is incorrect, or the file is corrupted.');
+      }
+      const doDecompress = !!(parsedV3.flags & FLAG_COMPRESSED);
+      const { meta, data } = await finalizeDecryptedPayload(assembled, doDecompress, onPhase);
+      onPhase('done', 1);
+      return {
+        meta,
+        data,
+        encryptedInputSize: fileBytes.byteLength,
+        recoveredSize: data.byteLength,
+        didDecrypt: true,
+        didDecompress: doDecompress,
+        usedKeyfile: !!(keyfileBytes && keyfileBytes.byteLength > 0)
+      };
+    }
+
+    const parsed = parseHeader(fileBytes);
+    const doDecrypt = !!(parsed.flags & FLAG_ENCRYPTED);
+    const doDecompress = !!(parsed.flags & FLAG_COMPRESSED);
+    const needsKeyfile = !!(parsed.flags & FLAG_KEYFILE);
+    const body = fileBytes.slice(parsed.dataStart);
+
+    let assembled;
+    if (doDecrypt) {
+      if (needsKeyfile && (!keyfileBytes || keyfileBytes.byteLength === 0)) {
+        throw new SecureZipError('KEYFILE_REQUIRED', "This file requires a keyfile, which wasn't provided.");
+      }
+      onPhase('derive', null);
+      const keyMaterial = await buildKeyMaterial(password, needsKeyfile ? keyfileBytes : null);
+      const key = await deriveKey(keyMaterial, parsed.salt, parsed.iterations);
+      onPhase('decrypt', null);
+      try {
+        const buf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: parsed.iv }, key, body);
+        assembled = new Uint8Array(buf);
+      } catch (e) {
+        throw new SecureZipError('AUTH_FAILED', 'Decryption failed. This usually means the password (or keyfile) is incorrect, or the file is corrupted.');
+      }
+    } else {
+      assembled = body;
+    }
+
+    const { meta, data } = await finalizeDecryptedPayload(assembled, doDecompress, onPhase);
+
+    onPhase('done', 1);
+    return {
+      meta,
+      data,
+      encryptedInputSize: fileBytes.byteLength,
+      recoveredSize: data.byteLength,
+      didDecrypt: doDecrypt,
+      didDecompress: doDecompress,
+      usedKeyfile: needsKeyfile
+    };
+  }
+
+  /* Checks whether a password (+ optional keyfile) authenticates against a
+     .sxz file's AES-GCM tag, without decompressing or returning the
+     plaintext to any UI element. Still has to run the actual AES-GCM
+     decrypt (that's the only way to check the tag), but the result is
+     discarded immediately after the check. */
+  async function verifyOneFile(password, fileBytes, keyfileBytes) {
+    if (hasMagicBytes(fileBytes) && fileBytes[4] === MULTIVOL_VERSION) {
+      let parsedV3;
+      try {
+        parsedV3 = parseV3Container(fileBytes);
+      } catch (e) {
+        return { ok: false, message: e.message || "This doesn't look like a SecureZip file." };
+      }
+      const result = await decryptV3Container(parsedV3, password, keyfileBytes);
+      return result
+        ? { ok: true, message: 'Password (and keyfile, if used) correct.' }
+        : { ok: false, message: 'Wrong password or keyfile, or the file is corrupted.' };
+    }
+
+    let parsed;
+    try {
+      parsed = parseHeader(fileBytes);
+    } catch (e) {
+      return { ok: false, message: e.message || "This doesn't look like a SecureZip file." };
+    }
+    const doDecrypt = !!(parsed.flags & FLAG_ENCRYPTED);
+    if (!doDecrypt) return { ok: true, message: 'No password needed (not encrypted).' };
+
+    const needsKeyfile = !!(parsed.flags & FLAG_KEYFILE);
+    if (needsKeyfile && (!keyfileBytes || keyfileBytes.byteLength === 0)) {
+      return { ok: false, message: 'Needs a keyfile, which was not provided.' };
+    }
+    const body = fileBytes.slice(parsed.dataStart);
+    try {
+      const keyMaterial = await buildKeyMaterial(password, needsKeyfile ? keyfileBytes : null);
+      const key = await deriveKey(keyMaterial, parsed.salt, parsed.iterations);
+      await crypto.subtle.decrypt({ name: 'AES-GCM', iv: parsed.iv }, key, body);
+      return { ok: true, message: needsKeyfile ? 'Password and keyfile correct.' : 'Password correct.' };
+    } catch (e) {
+      return { ok: false, message: 'Wrong password or keyfile, or the file is corrupted.' };
+    }
+  }
+
+  /* =========================================================
+     Multi-part splitting — wraps a finished .sxz/.gz file's bytes
+     into N numbered parts, each carrying a small header (group id +
+     index + count) so the Decrypt side can regroup and reassemble
+     them regardless of what the part files end up renamed to.
+  ========================================================= */
+  const PART_MAGIC = new Uint8Array([0x53, 0x58, 0x5A, 0x50]); // "SXZP"
+  const PART_HEADER_LEN = 4 + 8 + 2 + 2 + 4; // magic + groupId + total + index + payloadLen
+
+  function isPartMagic(headBytes) {
+    if (headBytes.byteLength < 4) return false;
+    for (let i = 0; i < 4; i++) if (headBytes[i] !== PART_MAGIC[i]) return false;
+    return true;
+  }
+
+  function buildPartHeader(groupId, totalParts, partIndex, payloadLen) {
+    const header = new Uint8Array(PART_HEADER_LEN);
+    header.set(PART_MAGIC, 0);
+    header.set(groupId, 4);
+    const dv = new DataView(header.buffer);
+    dv.setUint16(12, totalParts, true);
+    dv.setUint16(14, partIndex, true);
+    dv.setUint32(16, payloadLen, true);
+    return header;
+  }
+
+  function parsePartHeader(bytes) {
+    if (bytes.byteLength < PART_HEADER_LEN) {
+      throw new SecureZipError('BAD_PART', 'This part file is too small to be valid.');
+    }
+    for (let i = 0; i < 4; i++) {
+      if (bytes[i] !== PART_MAGIC[i]) throw new SecureZipError('BAD_PART', "This doesn't look like a SecureZip part file.");
+    }
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, PART_HEADER_LEN);
+    const groupId = bytes.slice(4, 12);
+    const totalParts = dv.getUint16(12, true);
+    const partIndex = dv.getUint16(14, true);
+    const payloadLen = dv.getUint32(16, true);
+    if (totalParts < 1 || partIndex >= totalParts) {
+      throw new SecureZipError('BAD_PART', 'This part file has an invalid index or count.');
+    }
+    if (bytes.byteLength < PART_HEADER_LEN + payloadLen) {
+      throw new SecureZipError('BAD_PART', 'This part file is truncated.');
+    }
+    const payload = bytes.slice(PART_HEADER_LEN, PART_HEADER_LEN + payloadLen);
+    return { groupId, totalParts, partIndex, payload };
+  }
+
+  function groupIdHex(bytes) {
+    return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  /* Splits `bytes` into ceil(len/partSize) parts, each prefixed with a
+     PART header sharing one random group id. Returns an array of
+     Uint8Array, one per part, ready to be downloaded individually. */
+  function splitIntoParts(bytes, partSize) {
+    const totalParts = Math.max(1, Math.ceil(bytes.byteLength / partSize));
+    const groupId = crypto.getRandomValues(new Uint8Array(8));
+    const parts = [];
+    for (let i = 0; i < totalParts; i++) {
+      const start = i * partSize;
+      const payload = bytes.slice(start, Math.min(start + partSize, bytes.byteLength));
+      const header = buildPartHeader(groupId, totalParts, i, payload.byteLength);
+      parts.push(concatTwo(header, payload));
+    }
+    return parts;
+  }
+
+  /* =========================================================
+     Minimal ZIP writer (store method only) for "download all" bundling
+  ========================================================= */
+  const CRC_TABLE = (() => {
+    const table = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) {
+        c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      }
+      table[n] = c >>> 0;
+    }
+    return table;
+  })();
+
+  function crc32(bytes) {
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) {
+      crc = CRC_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function uniquifyZipNames(entries) {
+    const seen = new Map();
+    return entries.map((e) => {
+      let name = e.name;
+      if (seen.has(name)) {
+        const count = seen.get(name) + 1;
+        seen.set(name, count);
+        const dot = name.lastIndexOf('.');
+        name = dot > 0 ? `${name.slice(0, dot)} (${count})${name.slice(dot)}` : `${name} (${count})`;
+      } else {
+        seen.set(name, 0);
+      }
+      return { name, bytes: e.bytes };
+    });
+  }
+
+  function buildZip(rawEntries) {
+    const entries = uniquifyZipNames(rawEntries);
+    const encoder = new TextEncoder();
+    const localParts = [];
+    const centralParts = [];
+    let offset = 0;
+    const DOS_DATE = 0x21; // 1980-01-01, fixed for simplicity
+
+    for (const entry of entries) {
+      const nameBytes = encoder.encode(entry.name);
+      const crc = crc32(entry.bytes);
+      const size = entry.bytes.byteLength;
+
+      const localHeader = new Uint8Array(30 + nameBytes.byteLength);
+      const lv = new DataView(localHeader.buffer);
+      lv.setUint32(0, 0x04034b50, true);
+      lv.setUint16(4, 20, true);
+      lv.setUint16(6, 0x0800, true);
+      lv.setUint16(8, 0, true);
+      lv.setUint16(10, 0, true);
+      lv.setUint16(12, DOS_DATE, true);
+      lv.setUint32(14, crc, true);
+      lv.setUint32(18, size, true);
+      lv.setUint32(22, size, true);
+      lv.setUint16(26, nameBytes.byteLength, true);
+      lv.setUint16(28, 0, true);
+      localHeader.set(nameBytes, 30);
+      localParts.push(localHeader, entry.bytes);
+
+      const centralHeader = new Uint8Array(46 + nameBytes.byteLength);
+      const cv = new DataView(centralHeader.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);
+      cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0x0800, true);
+      cv.setUint16(10, 0, true);
+      cv.setUint16(12, 0, true);
+      cv.setUint16(14, DOS_DATE, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, size, true);
+      cv.setUint32(24, size, true);
+      cv.setUint16(28, nameBytes.byteLength, true);
+      cv.setUint16(30, 0, true);
+      cv.setUint16(32, 0, true);
+      cv.setUint16(34, 0, true);
+      cv.setUint16(36, 0, true);
+      cv.setUint32(38, 0, true);
+      cv.setUint32(42, offset, true);
+      centralHeader.set(nameBytes, 46);
+      centralParts.push(centralHeader);
+
+      offset += localHeader.byteLength + entry.bytes.byteLength;
+    }
+
+    const centralDirStart = offset;
+    let centralSize = 0;
+    for (const c of centralParts) centralSize += c.byteLength;
+
+    const eocd = new Uint8Array(22);
+    const ev = new DataView(eocd.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(4, 0, true);
+    ev.setUint16(6, 0, true);
+    ev.setUint16(8, entries.length, true);
+    ev.setUint16(10, entries.length, true);
+    ev.setUint32(12, centralSize, true);
+    ev.setUint32(16, centralDirStart, true);
+    ev.setUint16(20, 0, true);
+
+    const allParts = [...localParts, ...centralParts, eocd];
+    let totalLen = 0;
+    for (const p of allParts) totalLen += p.byteLength;
+    const out = new Uint8Array(totalLen);
+    let pos = 0;
+    for (const p of allParts) { out.set(p, pos); pos += p.byteLength; }
+    return out;
+  }
+
+  /* =========================================================
+     ZIP reader (unzip) — lets a .zip be exploded into its files
+     before decrypting/decompressing. Supports store + deflate.
+  ========================================================= */
+  function isZipMagic(headBytes) {
+    if (headBytes.byteLength < 4) return false;
+    if (headBytes[0] !== 0x50 || headBytes[1] !== 0x4B) return false;
+    return (
+      (headBytes[2] === 0x03 && headBytes[3] === 0x04) || // local file header
+      (headBytes[2] === 0x05 && headBytes[3] === 0x06) || // empty archive EOCD
+      (headBytes[2] === 0x07 && headBytes[3] === 0x08)    // spanned data descriptor
+    );
+  }
+
+  function findEOCD(bytes) {
+    const MIN_EOCD = 22;
+    if (bytes.byteLength < MIN_EOCD) return -1;
+    const MAX_COMMENT = 65535;
+    const searchStart = Math.max(0, bytes.byteLength - MIN_EOCD - MAX_COMMENT);
+    for (let i = bytes.byteLength - MIN_EOCD; i >= searchStart; i--) {
+      if (bytes[i] === 0x50 && bytes[i + 1] === 0x4B && bytes[i + 2] === 0x05 && bytes[i + 3] === 0x06) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  async function inflateRaw(bytes) {
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return readAllChunks(stream);
+  }
+
+  async function parseZip(bytes) {
+    const eocdPos = findEOCD(bytes);
+    if (eocdPos === -1) {
+      throw new SecureZipError('BAD_ZIP', "This doesn't look like a valid .zip file (its directory couldn't be found).");
+    }
+    const eocd = new DataView(bytes.buffer, bytes.byteOffset + eocdPos, 22);
+    const totalEntries = eocd.getUint16(10, true);
+    const cdSize = eocd.getUint32(12, true);
+    const cdOffset = eocd.getUint32(16, true);
+
+    if (totalEntries === 0xFFFF || cdOffset === 0xFFFFFFFF || cdSize === 0xFFFFFFFF) {
+      throw new SecureZipError('ZIP64_UNSUPPORTED', 'This zip uses the ZIP64 format (very large archives), which is not supported.');
+    }
+    if (cdOffset > bytes.byteLength || cdOffset + cdSize > bytes.byteLength + 4) {
+      throw new SecureZipError('BAD_ZIP', 'This zip file appears to be truncated or corrupted.');
+    }
+
+    const centralEntries = [];
+    let pos = cdOffset;
+    for (let i = 0; i < totalEntries; i++) {
+      if (pos + 46 > bytes.byteLength) break;
+      const sig = new DataView(bytes.buffer, bytes.byteOffset + pos, 4).getUint32(0, true);
+      if (sig !== 0x02014b50) break;
+      const cdv = new DataView(bytes.buffer, bytes.byteOffset + pos, 46);
+      const flags = cdv.getUint16(8, true);
+      const method = cdv.getUint16(10, true);
+      const crc = cdv.getUint32(16, true);
+      const compSize = cdv.getUint32(20, true);
+      const nameLen = cdv.getUint16(28, true);
+      const extraLen = cdv.getUint16(30, true);
+      const commentLen = cdv.getUint16(32, true);
+      const localOffset = cdv.getUint32(42, true);
+      const nameBytes = bytes.slice(pos + 46, pos + 46 + nameLen);
+      const name = new TextDecoder('utf-8').decode(nameBytes);
+      pos += 46 + nameLen + extraLen + commentLen;
+
+      if (name.endsWith('/')) continue; // directory entry
+      centralEntries.push({ name, flags, method, crc, compSize, localOffset });
+    }
+
+    const results = [];
+    for (const entry of centralEntries) {
+      try {
+        if (entry.localOffset + 30 > bytes.byteLength) {
+          throw new SecureZipError('BAD_ZIP_ENTRY', 'This entry is truncated inside the zip.');
+        }
+        const lsig = new DataView(bytes.buffer, bytes.byteOffset + entry.localOffset, 4).getUint32(0, true);
+        if (lsig !== 0x04034b50) {
+          throw new SecureZipError('BAD_ZIP_ENTRY', 'This entry has a corrupted header inside the zip.');
+        }
+        const lv = new DataView(bytes.buffer, bytes.byteOffset + entry.localOffset, 30);
+        const lNameLen = lv.getUint16(26, true);
+        const lExtraLen = lv.getUint16(28, true);
+        const dataStart = entry.localOffset + 30 + lNameLen + lExtraLen;
+        const dataEnd = dataStart + entry.compSize;
+        if (dataEnd > bytes.byteLength) {
+          throw new SecureZipError('BAD_ZIP_ENTRY', 'This entry is truncated inside the zip.');
+        }
+        const compData = bytes.slice(dataStart, dataEnd);
+
+        if (entry.flags & 0x0001) {
+          throw new SecureZipError('ZIP_ENTRY_ENCRYPTED', 'This entry is password-protected inside the zip, which is not supported.');
+        }
+
+        let outBytes;
+        if (entry.method === 0) {
+          outBytes = compData;
+        } else if (entry.method === 8) {
+          try {
+            outBytes = await inflateRaw(compData);
+          } catch (e) {
+            throw new SecureZipError('ZIP_METHOD_UNSUPPORTED', "This entry couldn't be decompressed (Deflate isn't supported here).");
+          }
+        } else {
+          throw new SecureZipError('ZIP_METHOD_UNSUPPORTED', `This entry uses an unsupported compression method (code ${entry.method}).`);
+        }
+
+        if (crc32(outBytes) !== entry.crc) {
+          throw new SecureZipError('ZIP_ENTRY_CORRUPT', 'This entry failed an integrity check and may be corrupted.');
+        }
+
+        results.push({ name: entry.name, bytes: outBytes, error: null, size: outBytes.byteLength });
+      } catch (err) {
+        results.push({ name: entry.name, bytes: null, error: err.message || 'Could not extract this entry.', size: entry.compSize });
+      }
+    }
+
+    return results;
+  }
+
+  /* =========================================================
+     Plain .gz output (no SecureZip wrapper) — for Compress-only
+     mode when the user wants a file any standard tool can open.
+  ========================================================= */
+  async function runPlainGzipEncode(source, totalBytes, onProgress) {
+    if (!compressionOK) {
+      throw new SecureZipError('NO_COMPRESSION', "Compression isn't available in this browser.");
+    }
+    let seen = 0;
+    const progressTransform = new TransformStream({
+      transform(chunk, controller) {
+        seen += chunk.byteLength;
+        if (onProgress) onProgress(Math.min(seen / Math.max(totalBytes, 1), 1));
+        controller.enqueue(chunk);
+      }
+    });
+    const sourceStream = (source instanceof File) ? source.stream() : new Blob([source]).stream();
+    const stream = sourceStream.pipeThrough(progressTransform).pipeThrough(new CompressionStream('gzip'));
+    return readAllChunks(stream);
+  }
+
+  async function runPlainGzipDecode(bytes, onProgress) {
+    if (!compressionOK) {
+      throw new SecureZipError('NO_COMPRESSION', "Decompression isn't available in this browser.");
+    }
+    let seen = 0;
+    const total = Math.max(bytes.byteLength, 1);
+    const progressTransform = new TransformStream({
+      transform(chunk, controller) {
+        seen += chunk.byteLength;
+        if (onProgress) onProgress(Math.min(seen / total, 1));
+        controller.enqueue(chunk);
+      }
+    });
+    const stream = new Blob([bytes]).stream().pipeThrough(progressTransform).pipeThrough(new DecompressionStream('gzip'));
+    return readAllChunks(stream);
+  }
+
+  function isGzipMagic(headBytes) {
+    return headBytes.byteLength >= 2 && headBytes[0] === 0x1F && headBytes[1] === 0x8B;
+  }
+
+  function stripGzExtension(name) {
+    return /\.gz$/i.test(name) ? name.slice(0, -3) : name + '.decompressed';
+  }
+
+  /* =========================================================
+     Base64 copy/paste — lets small encrypted payloads travel as
+     plain text through Slack, email, SMS, etc.
+  ========================================================= */
+  function bytesToBase64(bytes) {
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+    }
+    return btoa(binary);
+  }
+  function base64ToBytes(base64) {
+    const cleaned = String(base64).replace(/\s+/g, '');
+    let binary;
+    try {
+      binary = atob(cleaned);
+    } catch (e) {
+      throw new SecureZipError('BAD_BASE64', "This doesn't look like valid base64 text.");
+    }
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+
+  /* =========================================================
+     SHA-256 fingerprint — lets a sender/recipient verify a file
+     out-of-band before trusting it.
+  ========================================================= */
+  async function sha256Hex(bytes) {
+    if (!cryptoOK) return null;
+    const hashBuf = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(hashBuf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  /* =========================================================
+     Password generator
+  ========================================================= */
+  function generateStrongPassword(length) {
+    length = length || 20;
+    const pool = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*()-_=+[]{}';
+    if (!cryptoOK) {
+      throw new SecureZipError('NO_CRYPTO', "Can't generate a secure password without Web Crypto.");
+    }
+    const randomValues = crypto.getRandomValues(new Uint32Array(length));
+    let pw = '';
+    for (let i = 0; i < length; i++) pw += pool[randomValues[i] % pool.length];
+    return pw;
+  }
+
+  /* =========================================================
+     Password strength
+  ========================================================= */
+  const COMMON_PASSWORDS = new Set([
+    'password', '123456', '12345678', 'qwerty', '111111', 'letmein', 'admin',
+    'welcome', 'iloveyou', 'abc123', 'password1', '123456789', '000000',
+    'monkey', 'dragon', 'football', 'baseball', 'trustno1'
+  ]);
+
+  function estimateStrength(pw) {
+    if (!pw) return { score: 0, label: '', color: 'var(--ink-700)' };
+    let pool = 0;
+    if (/[a-z]/.test(pw)) pool += 26;
+    if (/[A-Z]/.test(pw)) pool += 26;
+    if (/[0-9]/.test(pw)) pool += 10;
+    if (/[^a-zA-Z0-9]/.test(pw)) pool += 32;
+    pool = Math.max(pool, 1);
+
+    let bits = pw.length * Math.log2(pool);
+
+    if (COMMON_PASSWORDS.has(pw.toLowerCase())) bits = Math.min(bits, 10);
+    const uniqueChars = new Set(pw).size;
+    if (uniqueChars <= 2 && pw.length > 4) bits = Math.min(bits, 15);
+    if (/^(.)\1+$/.test(pw)) bits = Math.min(bits, 8);
+
+    const levels = [
+      { max: 28, score: 1, label: 'Weak', color: '#E2694B' },
+      { max: 40, score: 2, label: 'Fair', color: '#D9924B' },
+      { max: 60, score: 3, label: 'Good', color: '#C9A24B' },
+      { max: 80, score: 4, label: 'Strong', color: '#7FBFA0' },
+      { max: Infinity, score: 5, label: 'Very strong', color: '#3FBFAA' }
+    ];
+    const level = levels.find(l => bits < l.max) || levels[levels.length - 1];
+    return { score: level.score, label: level.label, color: level.color };
+  }
+
+  /* =========================================================
+     Shared UI helpers
+  ========================================================= */
+  const $ = (id) => document.getElementById(id);
+
+  /* ---------- Toast ---------- */
+  const globalToast = document.getElementById('global-toast');
+  let toastHideTimer = null;
+  function showToast(message, ms) {
+    if (!globalToast) return;
+    globalToast.textContent = message;
+    globalToast.hidden = false;
+    void globalToast.offsetWidth;
+    globalToast.classList.add('show');
+    if (toastHideTimer) clearTimeout(toastHideTimer);
+    toastHideTimer = setTimeout(() => {
+      globalToast.classList.remove('show');
+      setTimeout(() => { globalToast.hidden = true; }, 260);
+    }, ms || 3500);
+  }
+
+  const PREFS_KEY = 'securezip-prefs';
+  function loadPrefs() {
+    try {
+      const raw = localStorage.getItem(PREFS_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      return {};
+    }
+  }
+  function savePrefs(patch) {
+    try {
+      const current = loadPrefs();
+      localStorage.setItem(PREFS_KEY, JSON.stringify(Object.assign(current, patch)));
+    } catch (e) {}
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+
+  /* Robust clipboard copy: tries the modern async Clipboard API (needs a secure
+     context), falls back to the legacy execCommand technique (works in more
+     contexts, including many that block the async API), and reports which
+     method worked (or none) so the caller can offer a manual fallback. */
+  async function copyTextToClipboard(text) {
+    if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return 'modern';
+      } catch (e) {}
+    }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '-9999px';
+      ta.style.left = '-9999px';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      const ok = document.execCommand && document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok) return 'legacy';
+    } catch (e) {}
+    return false;
+  }
+
+  /* Last-resort manual copy when neither clipboard method is available: a
+     prompt() pre-filled and auto-selected with the text works in virtually
+     every browser without needing any special permission. */
+  function fallbackManualCopy(text) {
+    try {
+      window.prompt('Copy this text (Ctrl+C, or long-press → Copy, then Escape):', text);
+    } catch (e) {}
+  }
+
+  function showError(bannerEl, message) {
+    bannerEl.innerHTML = '';
+    const strong = document.createElement('strong');
+    strong.textContent = 'Something went wrong.';
+    bannerEl.appendChild(strong);
+    bannerEl.appendChild(document.createTextNode(' ' + message));
+    bannerEl.hidden = false;
+  }
+
+  function startTicker(el) {
+    if (reduceMotion) { el.textContent = 'processing…'; return null; }
+    const hexChars = '0123456789ABCDEF';
+    const id = setInterval(() => {
+      let s = '';
+      for (let i = 0; i < 48; i++) s += hexChars[(Math.random() * 16) | 0];
+      el.textContent = s.match(/.{1,2}/g).join(' ');
+    }, 70);
+    return id;
+  }
+  function stopTicker(id, el) {
+    if (id) clearInterval(id);
+    el.textContent = '';
+  }
+
+  function makePhaseUpdater(phaseMap, labelEl, pctEl, fillEl, prefix) {
+    return function (phase, fraction) {
+      const info = phaseMap[phase];
+      if (!info) return;
+      labelEl.textContent = (prefix || '') + info.label;
+      if (fraction === null || fraction === undefined) {
+        fillEl.classList.add('indeterminate');
+        fillEl.style.width = info.start + '%';
+        pctEl.textContent = '';
+      } else {
+        fillEl.classList.remove('indeterminate');
+        const pct = info.start + (info.end - info.start) * fraction;
+        fillEl.style.width = pct + '%';
+        pctEl.textContent = Math.round(pct) + '%';
+      }
+    };
+  }
+
+  function dedupeKey(file, relativePath) {
+    return `${relativePath || file.name}::${file.size}::${file.lastModified}`;
+  }
+
+  /* ---------- Folder drop support ---------- */
+  function readEntryRecursively(entry, basePath) {
+    return new Promise((resolve) => {
+      if (entry.isFile) {
+        entry.file(
+          (file) => resolve([{ file, relativePath: basePath + entry.name }]),
+          () => resolve([])
+        );
+      } else if (entry.isDirectory) {
+        const reader = entry.createReader();
+        const collected = [];
+        const readBatch = () => {
+          reader.readEntries(async (batch) => {
+            if (!batch.length) {
+              const nested = await Promise.all(collected.map((e) => readEntryRecursively(e, basePath + entry.name + '/')));
+              resolve(nested.flat());
+              return;
+            }
+            collected.push(...batch);
+            readBatch(); // directory readers only return a page at a time — keep going until empty
+          }, () => resolve([]));
+        };
+        readBatch();
+      } else {
+        resolve([]);
+      }
+    });
+  }
+
+  /* Returns an array of {file, relativePath}. Falls back to flat file names
+     when the browser doesn't support the entries API (older Safari) or when
+     nothing dragged in is actually a folder — keeps the common case cheap. */
+  async function getDroppedItems(dataTransfer) {
+    const items = dataTransfer.items;
+    if (!items || !items.length || typeof items[0].webkitGetAsEntry !== 'function') {
+      return Array.from(dataTransfer.files || []).map((file) => ({ file, relativePath: file.name }));
+    }
+    const entries = Array.from(items).map((it) => it.webkitGetAsEntry()).filter(Boolean);
+    if (!entries.some((e) => e.isDirectory)) {
+      return Array.from(dataTransfer.files || []).map((file) => ({ file, relativePath: file.name }));
+    }
+    const nested = await Promise.all(entries.map((entry) => readEntryRecursively(entry, '')));
+    return nested.flat();
+  }
+
+  const MOVE_UP_ICON = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 15l6-6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const MOVE_DOWN_ICON = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  function createFileListRow(file, onRemove, opts) {
+    const reorder = opts && opts.reorder;
+    const row = document.createElement('div');
+    row.className = 'file-list-item';
+
+    let upBtn = null, downBtn = null;
+    if (reorder) {
+      const reorderWrap = document.createElement('div');
+      reorderWrap.className = 'file-list-reorder';
+      upBtn = document.createElement('button');
+      upBtn.type = 'button';
+      upBtn.className = 'file-list-move';
+      upBtn.dataset.dir = 'up';
+      upBtn.setAttribute('aria-label', `Move ${file.name} up`);
+      upBtn.innerHTML = MOVE_UP_ICON;
+      downBtn = document.createElement('button');
+      downBtn.type = 'button';
+      downBtn.className = 'file-list-move';
+      downBtn.dataset.dir = 'down';
+      downBtn.setAttribute('aria-label', `Move ${file.name} down`);
+      downBtn.innerHTML = MOVE_DOWN_ICON;
+      reorderWrap.appendChild(upBtn);
+      reorderWrap.appendChild(downBtn);
+      row.appendChild(reorderWrap);
+    }
+
+    const main = document.createElement('div');
+    main.className = 'file-list-main';
+    const nameEl = document.createElement('span');
+    nameEl.className = 'file-list-name';
+    nameEl.textContent = file.name;
+    const sizeEl = document.createElement('span');
+    sizeEl.className = 'file-list-size';
+    sizeEl.textContent = formatBytes(file.size);
+    main.appendChild(nameEl);
+    main.appendChild(sizeEl);
+    row.appendChild(main);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'file-list-remove';
+    removeBtn.setAttribute('aria-label', `Remove ${file.name}`);
+    removeBtn.textContent = '×';
+    removeBtn.addEventListener('click', () => onRemove());
+    row.appendChild(removeBtn);
+
+    return { row, main, upBtn, downBtn, badgeEl: null };
+  }
+
+  /* Moves `entry` one slot up/down (delta -1/+1) within `arr`, keeping the
+     matching DOM row in `container` in sync. No-ops silently at either end. */
+  function reorderListEntry(arr, entry, delta, container) {
+    const idx = arr.indexOf(entry);
+    if (idx === -1) return;
+    const newIdx = idx + delta;
+    if (newIdx < 0 || newIdx >= arr.length) return;
+    arr.splice(idx, 1);
+    arr.splice(newIdx, 0, entry);
+    if (delta < 0) {
+      const prev = entry.row.previousElementSibling;
+      if (prev) container.insertBefore(entry.row, prev);
+    } else {
+      const next = entry.row.nextElementSibling;
+      if (next) container.insertBefore(next, entry.row);
+    }
+  }
+
+  function addFileBadge(rowMainEl, text, variant) {
+    const badge = document.createElement('span');
+    badge.className = 'file-badge' + (variant ? ' ' + variant : '');
+    badge.textContent = text;
+    rowMainEl.appendChild(badge);
+    return badge;
+  }
+
+  function updateFileListSummary(el, files) {
+    if (files.length === 0) { el.textContent = ''; return; }
+    let total = 0;
+    for (const f of files) total += f.size;
+    el.textContent = `${files.length} file${files.length === 1 ? '' : 's'} selected · ${formatBytes(total)} total`;
+  }
+
+  /* Generic result row builder shared by encrypt + decrypt outcomes */
+  function createResultRow(opts) {
+    const row = document.createElement('div');
+    row.className = 'result-row';
+    row.dataset.status = opts.status;
+
+    if (opts.status === 'done' && opts.thumbUrl) {
+      const thumb = document.createElement('img');
+      thumb.className = 'result-thumb';
+      thumb.src = opts.thumbUrl;
+      thumb.alt = '';
+      row.appendChild(thumb);
+    } else {
+      const icon = document.createElement('div');
+      icon.className = 'result-icon';
+      icon.innerHTML = opts.status === 'done'
+        ? '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.3 3.86l-8.2 14.2A1.5 1.5 0 0 0 3.4 20.5h17.2a1.5 1.5 0 0 0 1.3-2.44l-8.2-14.2a1.5 1.5 0 0 0-2.6 0Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+      row.appendChild(icon);
+    }
+
+    const info = document.createElement('div');
+    info.className = 'result-info';
+    const nameEl = document.createElement('div');
+    nameEl.className = 'result-name';
+    nameEl.textContent = opts.name;
+    info.appendChild(nameEl);
+
+    if (opts.status === 'done') {
+      const statsEl = document.createElement('div');
+      statsEl.className = 'result-stats';
+      statsEl.textContent = opts.statsLine || '';
+      info.appendChild(statsEl);
+
+      if (opts.fingerprint) {
+        const fpEl = document.createElement('div');
+        fpEl.className = 'result-fingerprint';
+        const fpLabel = document.createElement('span');
+        fpLabel.textContent = 'SHA-256: ' + opts.fingerprint.slice(0, 12) + '…' + opts.fingerprint.slice(-8);
+        const fpCopyBtn = document.createElement('button');
+        fpCopyBtn.type = 'button';
+        fpCopyBtn.textContent = 'copy';
+        fpCopyBtn.addEventListener('click', async () => {
+          const method = await copyTextToClipboard(opts.fingerprint);
+          const orig = fpCopyBtn.textContent;
+          if (method) {
+            fpCopyBtn.textContent = 'copied ✓';
+          } else {
+            fallbackManualCopy(opts.fingerprint);
+            fpCopyBtn.textContent = 'see popup';
+          }
+          setTimeout(() => { fpCopyBtn.textContent = orig; }, 1500);
+        });
+        fpEl.appendChild(fpLabel);
+        fpEl.appendChild(fpCopyBtn);
+        info.appendChild(fpEl);
+      }
+    } else {
+      const errEl = document.createElement('div');
+      errEl.className = 'result-error';
+      errEl.textContent = opts.errorMessage || 'Failed unexpectedly.';
+      info.appendChild(errEl);
+    }
+
+    if (opts.status === 'done') {
+      const actions = document.createElement('div');
+      actions.className = 'result-actions';
+
+      if (opts.previewKind && opts.previewUrl) {
+        const previewBtn = document.createElement('button');
+        previewBtn.type = 'button';
+        previewBtn.className = 'secondary-btn';
+        previewBtn.textContent = 'Preview';
+
+        const previewWrap = document.createElement('div');
+        previewWrap.className = 'result-preview-wrap';
+        previewWrap.hidden = true;
+
+        if (opts.previewKind === 'image') {
+          const img = document.createElement('img');
+          img.className = 'result-preview-media';
+          img.src = opts.previewUrl;
+          img.alt = opts.name || '';
+          previewWrap.appendChild(img);
+        } else if (opts.previewKind === 'audio') {
+          const audio = document.createElement('audio');
+          audio.controls = true;
+          audio.className = 'result-preview-media';
+          audio.src = opts.previewUrl;
+          previewWrap.appendChild(audio);
+        } else if (opts.previewKind === 'video') {
+          const video = document.createElement('video');
+          video.controls = true;
+          video.className = 'result-preview-media';
+          video.src = opts.previewUrl;
+          previewWrap.appendChild(video);
+        } else if (opts.previewKind === 'pdf') {
+          const embed = document.createElement('embed');
+          embed.className = 'result-preview-media result-preview-pdf';
+          embed.setAttribute('src', opts.previewUrl);
+          embed.setAttribute('type', 'application/pdf');
+          previewWrap.appendChild(embed);
+          const fallbackNote = document.createElement('p');
+          fallbackNote.className = 'field-hint';
+          fallbackNote.textContent = "If the PDF doesn't render inline, your browser may not support embedded PDFs — download it instead.";
+          previewWrap.appendChild(fallbackNote);
+        }
+
+        previewBtn.addEventListener('click', () => {
+          previewWrap.hidden = !previewWrap.hidden;
+          previewBtn.textContent = previewWrap.hidden ? 'Preview' : 'Hide preview';
+        });
+
+        actions.appendChild(previewBtn);
+        info.appendChild(previewWrap);
+      }
+
+      if (typeof opts.textValue === 'string') {
+        const toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.className = 'secondary-btn';
+        toggleBtn.textContent = 'View text';
+
+        const textWrap = document.createElement('div');
+        textWrap.className = 'result-text-wrap';
+        textWrap.hidden = true;
+        const ta = document.createElement('textarea');
+        ta.readOnly = true;
+        ta.rows = 4;
+        ta.value = opts.textValue;
+        textWrap.appendChild(ta);
+
+        const taActions = document.createElement('div');
+        taActions.className = 'text-result-actions';
+        const copyBtn = document.createElement('button');
+        copyBtn.type = 'button'; copyBtn.className = 'secondary-btn'; copyBtn.textContent = 'Copy';
+        copyBtn.addEventListener('click', async () => {
+          const method = await copyTextToClipboard(ta.value);
+          const orig = copyBtn.textContent;
+          if (method) {
+            copyBtn.textContent = 'Copied ✓';
+          } else {
+            ta.focus();
+            ta.select();
+            copyBtn.textContent = 'Selected above ↑';
+          }
+          setTimeout(() => { copyBtn.textContent = orig; }, 1500);
+        });
+        const dlTxtBtn = document.createElement('button');
+        dlTxtBtn.type = 'button'; dlTxtBtn.className = 'secondary-btn'; dlTxtBtn.textContent = 'Download .txt';
+        dlTxtBtn.addEventListener('click', () => {
+          const fname = opts.name.toLowerCase().endsWith('.txt') ? opts.name : opts.name + '.txt';
+          downloadBlob(new Blob([ta.value], { type: 'text/plain' }), fname);
+        });
+        taActions.appendChild(copyBtn);
+        taActions.appendChild(dlTxtBtn);
+        textWrap.appendChild(taActions);
+
+        toggleBtn.addEventListener('click', () => {
+          textWrap.hidden = !textWrap.hidden;
+          toggleBtn.textContent = textWrap.hidden ? 'View text' : 'Hide text';
+        });
+
+        actions.appendChild(toggleBtn);
+        info.appendChild(textWrap);
+      }
+
+      if (opts.onDownload) {
+        const dlBtn = document.createElement('button');
+        dlBtn.type = 'button';
+        dlBtn.className = 'secondary-btn';
+        dlBtn.textContent = 'Download';
+        dlBtn.addEventListener('click', opts.onDownload);
+        actions.appendChild(dlBtn);
+      }
+
+      if (opts.parts && opts.parts.length > 1) {
+        const dlAllBtn = document.createElement('button');
+        dlAllBtn.type = 'button';
+        dlAllBtn.className = 'secondary-btn accent-btn';
+        dlAllBtn.textContent = `Download all ${opts.parts.length} parts (.zip)`;
+        dlAllBtn.addEventListener('click', () => {
+          const zipBytes = buildZip(opts.parts.map((p) => ({ name: p.name, bytes: p.bytes })));
+          downloadBlob(new Blob([zipBytes], { type: 'application/zip' }), (opts.partsZipName || 'securezip-parts') + '.zip');
+        });
+        actions.appendChild(dlAllBtn);
+
+        const toggleListBtn = document.createElement('button');
+        toggleListBtn.type = 'button';
+        toggleListBtn.className = 'secondary-btn';
+        toggleListBtn.textContent = 'Individual parts';
+
+        const partList = document.createElement('div');
+        partList.className = 'part-list';
+        partList.hidden = true;
+        opts.parts.forEach((p) => {
+          const partRow = document.createElement('div');
+          partRow.className = 'part-list-row';
+          const label = document.createElement('span');
+          label.textContent = `${p.name} (${formatBytes(p.bytes.byteLength)})`;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = 'Download';
+          btn.addEventListener('click', () => downloadBlob(new Blob([p.bytes], { type: 'application/octet-stream' }), p.name));
+          partRow.appendChild(label);
+          partRow.appendChild(btn);
+          partList.appendChild(partRow);
+        });
+        toggleListBtn.addEventListener('click', () => {
+          partList.hidden = !partList.hidden;
+          toggleListBtn.textContent = partList.hidden ? 'Individual parts' : 'Hide part list';
+        });
+        actions.appendChild(toggleListBtn);
+        info.appendChild(partList);
+      }
+
+      if (opts.getShareFile && navigator.share && navigator.canShare) {
+        const shareBtn = document.createElement('button');
+        shareBtn.type = 'button';
+        shareBtn.className = 'secondary-btn';
+        shareBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v13m0-13 4 4m-4-4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg> Share';
+        shareBtn.addEventListener('click', async () => {
+          let file;
+          try { file = opts.getShareFile(); } catch (e) { file = null; }
+          if (!file || !navigator.canShare({ files: [file] })) {
+            const orig = shareBtn.innerHTML;
+            shareBtn.textContent = 'Not supported here';
+            setTimeout(() => { shareBtn.innerHTML = orig; }, 1800);
+            return;
+          }
+          try {
+            await navigator.share({ files: [file], title: file.name });
+          } catch (e) {
+            // AbortError just means the person closed the share sheet — not an error worth surfacing.
+          }
+        });
+        actions.appendChild(shareBtn);
+      }
+
+      if (opts.getCopyAsText) {
+        const copyTextBtn = document.createElement('button');
+        copyTextBtn.type = 'button';
+        copyTextBtn.className = 'secondary-btn';
+        copyTextBtn.textContent = 'Copy as text';
+        copyTextBtn.addEventListener('click', async () => {
+          const text = await opts.getCopyAsText();
+          const method = await copyTextToClipboard(text);
+          const orig = copyTextBtn.textContent;
+          if (method) {
+            copyTextBtn.textContent = 'Copied ✓';
+          } else {
+            fallbackManualCopy(text);
+            copyTextBtn.textContent = 'See popup';
+          }
+          setTimeout(() => { copyTextBtn.textContent = orig; }, 1500);
+        });
+        actions.appendChild(copyTextBtn);
+      }
+
+      row.appendChild(info);
+      row.appendChild(actions);
+    } else {
+      row.appendChild(info);
+    }
+
+    return row;
+  }
+
+  function summarizeOutcome(successCount, total) {
+    if (total === 1) return successCount === 1 ? 'Ready to download.' : 'This file could not be processed.';
+    if (successCount === total) return `All ${total} files processed successfully.`;
+    if (successCount === 0) return `All ${total} files failed — see details below.`;
+    return `${successCount} of ${total} files processed successfully; ${total - successCount} failed.`;
+  }
+
+  /* =========================================================
+     Tab switching
+  ========================================================= */
+  const mainPanel = $('main-panel');
+  const tabEncrypt = $('tab-encrypt');
+  const tabDecrypt = $('tab-decrypt');
+  const panelEncrypt = $('panel-encrypt');
+  const panelDecrypt = $('panel-decrypt');
+
+  function activateMode(mode) {
+    const isEncrypt = mode === 'encrypt';
+    tabEncrypt.setAttribute('aria-selected', String(isEncrypt));
+    tabDecrypt.setAttribute('aria-selected', String(!isEncrypt));
+    mainPanel.dataset.mode = mode;
+
+    panelEncrypt.hidden = !isEncrypt;
+    panelDecrypt.hidden = isEncrypt;
+
+    const activePanel = isEncrypt ? panelEncrypt : panelDecrypt;
+    activePanel.classList.remove('panel-enter');
+    void activePanel.offsetWidth;
+    activePanel.classList.add('panel-enter');
+  }
+
+  tabEncrypt.addEventListener('click', () => activateMode('encrypt'));
+  tabDecrypt.addEventListener('click', () => activateMode('decrypt'));
+
+  /* ---------- Show / hide password ---------- */
+  function wireToggleVisibility(btn) {
+    btn.addEventListener('click', () => {
+      const target = $(btn.dataset.target);
+      const showing = target.type === 'text';
+      target.type = showing ? 'password' : 'text';
+      btn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+      btn.innerHTML = showing
+        ? '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.24 4.24M6.6 6.7C3.9 8.3 2 12 2 12s4 7 11 7c1.9 0 3.5-.4 4.9-1.1M17.9 17.9C20.4 16.1 22 12 22 12s-1.4-2.5-4-4.4M9.9 4.2C10.6 4.1 11.3 4 12 4c7 0 11 7 11 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+    });
+  }
+  document.querySelectorAll('.toggle-visibility').forEach(wireToggleVisibility);
+
+  /* =========================================================
+     ENCRYPT panel state & logic
+  ========================================================= */
+  const encState = {
+    inputMode: 'file',
+    operation: 'encrypt',
+    files: [],
+    busy: false,
+    zipEntries: [],
+    keyfileBytes: null,
+    keyfileName: null,
+    iterations: ITERATIONS_DEFAULT,
+    outputFormat: 'sxz', // 'sxz' | 'gz' (gz only applies to compress-only mode)
+    splitSize: 0, // 0 = don't split; otherwise target bytes per part
+    recipients: [], // additional recipients beyond the primary password field
+    decoyEnabled: false
+  };
+
+  function operationFlags(op) {
+    return { compress: op === 'compress' || op === 'both', encrypt: op === 'encrypt' || op === 'both' };
+  }
+
+  const OPERATION_BUTTON_LABELS = {
+    compress: 'Compress',
+    encrypt: 'Encrypt',
+    both: 'Compress + Encrypt'
+  };
+  const OPERATION_RESULT_TITLES = {
+    compress: 'Compressed',
+    encrypt: 'Sealed',
+    both: 'Compressed & Sealed'
+  };
+  const OPERATION_ICONS = {
+    compress: '<circle cx="24" cy="24" r="21" stroke="currentColor" stroke-width="2"/><path d="M13 18h22M20 24v6h8v-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 18l2.5-4h9l2.5 4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
+    encrypt: '<circle cx="24" cy="24" r="21" stroke="currentColor" stroke-width="2"/><rect x="14.5" y="22" width="19" height="14" rx="2.5" stroke="currentColor" stroke-width="2"/><path d="M18 22v-5.2a6 6 0 0 1 12 0V22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="24" cy="28.5" r="1.8" fill="currentColor"/>',
+    both: '<circle cx="24" cy="24" r="21" stroke="currentColor" stroke-width="2"/><rect x="14.5" y="22" width="19" height="14" rx="2.5" stroke="currentColor" stroke-width="2"/><path d="M18 22v-5.2a6 6 0 0 1 12 0V22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="24" cy="28.5" r="1.8" fill="currentColor"/>'
+  };
+
+  const inputToggleFile = $('input-toggle-file');
+  const inputToggleText = $('input-toggle-text');
+  const inputViewFile = $('input-view-file');
+  const inputViewText = $('input-view-text');
+  const opToggleCompress = $('op-toggle-compress');
+  const opToggleEncrypt = $('op-toggle-encrypt');
+  const opToggleBoth = $('op-toggle-both');
+  const dropzone = $('dropzone');
+  const fileInput = $('file-input');
+  const fileList = $('file-list');
+  const fileListSummary = $('file-list-summary');
+  const textInput = $('text-input');
+  const outputFormatGroup = $('output-format-group');
+  const formatToggleSxz = $('format-toggle-sxz');
+  const formatToggleGz = $('format-toggle-gz');
+  const cameraCaptureBtn = $('camera-capture-btn');
+  const cameraInput = $('camera-input');
+  const encPasswordSection = $('encrypt-password-section');
+  const encPassword = $('encrypt-password');
+  const encConfirm = $('encrypt-password-confirm');
+  const matchHint = $('password-match-hint');
+  const strengthFill = $('strength-fill');
+  const strengthLabel = $('strength-label');
+  const passwordGenerateBtn = $('password-generate-btn');
+  const passwordCopyBtn = $('password-copy-btn');
+  const passwordCopyHint = $('password-copy-hint');
+  const encKeyfilePickBtn = $('encrypt-keyfile-pick-btn');
+  const encKeyfileGenBtn = $('encrypt-keyfile-gen-btn');
+  const encKeyfileInput = $('encrypt-keyfile-input');
+  const encKeyfileChip = $('encrypt-keyfile-chip');
+  const encKeyfileName = $('encrypt-keyfile-name');
+  const encKeyfileRemove = $('encrypt-keyfile-remove');
+  const encIterationsRange = $('encrypt-iterations-range');
+  const encIterationsValue = $('encrypt-iterations-value');
+  const encSplitSelect = $('encrypt-split-select');
+  const encRecipientsList = $('encrypt-recipients-list');
+  const encAddRecipientBtn = $('encrypt-add-recipient-btn');
+  const encDecoyEnable = $('encrypt-decoy-enable');
+  const encDecoyFields = $('encrypt-decoy-fields');
+  const encDecoyText = $('encrypt-decoy-text');
+  const encDecoyPassword = $('encrypt-decoy-password');
+  const encDecoyConfirm = $('encrypt-decoy-password-confirm');
+  const decoyMatchHint = $('decoy-password-match-hint');
+  const encryptBtn = $('encrypt-btn');
+  const encryptProcess = $('encrypt-process');
+  const encryptPhaseLabel = $('encrypt-phase-label');
+  const encryptPhasePct = $('encrypt-phase-pct');
+  const encryptProgressFill = $('encrypt-progress-fill');
+  const encryptTicker = $('encrypt-ticker');
+  const encryptError = $('encrypt-error');
+  const encryptResults = $('encrypt-results');
+  const encryptResultsIcon = $('encrypt-results-icon');
+  const encryptResultsTitle = $('encrypt-results-title');
+  const encryptResultsSubtitle = $('encrypt-results-subtitle');
+  const encryptResultsList = $('encrypt-results-list');
+  const encryptDownloadAllWrap = $('encrypt-download-all-wrap');
+  const encryptDownloadAllBtn = $('encrypt-download-all');
+
+  const encControls = [inputToggleFile, inputToggleText, opToggleCompress, opToggleEncrypt, opToggleBoth,
+    formatToggleSxz, formatToggleGz, dropzone, cameraCaptureBtn, textInput, encPassword, encConfirm,
+    passwordGenerateBtn, passwordCopyBtn, encKeyfilePickBtn, encKeyfileGenBtn, encIterationsRange, encSplitSelect,
+    encAddRecipientBtn, encDecoyEnable, encDecoyText, encDecoyPassword, encDecoyConfirm, encryptBtn];
+
+  function setEncryptBusy(busy) {
+    encState.busy = busy;
+    encControls.forEach((el) => { el.disabled = busy; });
+    document.querySelectorAll('#file-list .file-list-remove').forEach((btn) => { btn.disabled = busy; });
+  }
+
+  function setInputMode(mode) {
+    encState.inputMode = mode;
+    inputToggleFile.classList.toggle('active', mode === 'file');
+    inputToggleText.classList.toggle('active', mode === 'text');
+    inputViewFile.hidden = mode !== 'file';
+    inputViewText.hidden = mode !== 'text';
+    resetEncryptResultUI();
+    updateEncryptButtonState();
+  }
+  inputToggleFile.addEventListener('click', () => setInputMode('file'));
+  inputToggleText.addEventListener('click', () => setInputMode('text'));
+
+  function setOperation(op, persist) {
+    encState.operation = op;
+    opToggleCompress.classList.toggle('active', op === 'compress');
+    opToggleEncrypt.classList.toggle('active', op === 'encrypt');
+    opToggleBoth.classList.toggle('active', op === 'both');
+    encPasswordSection.hidden = !operationFlags(op).encrypt;
+    outputFormatGroup.hidden = op !== 'compress';
+    encryptBtn.textContent = OPERATION_BUTTON_LABELS[op];
+    resetEncryptResultUI();
+    updateEncryptButtonState();
+    if (persist !== false) savePrefs({ operation: op });
+  }
+  opToggleCompress.addEventListener('click', () => setOperation('compress'));
+  opToggleEncrypt.addEventListener('click', () => setOperation('encrypt'));
+  opToggleBoth.addEventListener('click', () => setOperation('both'));
+
+  function setOutputFormat(format) {
+    encState.outputFormat = format;
+    formatToggleSxz.classList.toggle('active', format === 'sxz');
+    formatToggleGz.classList.toggle('active', format === 'gz');
+    resetEncryptResultUI();
+  }
+  formatToggleSxz.addEventListener('click', () => setOutputFormat('sxz'));
+  formatToggleGz.addEventListener('click', () => setOutputFormat('gz'));
+
+  function addEncryptFiles(items) {
+    // Accepts either plain File objects or {file, relativePath} pairs (the
+    // latter used when a whole folder was dropped/picked, to preserve structure).
+    const normalized = items.map((item) => (item instanceof File)
+      ? { file: item, relativePath: item.name }
+      : { file: item.file, relativePath: item.relativePath || item.file.name });
+
+    const existingKeys = new Set(encState.files.map((f) => dedupeKey(f.file, f.relativePath)));
+    for (const { file, relativePath } of normalized) {
+      const key = dedupeKey(file, relativePath);
+      if (existingKeys.has(key)) continue;
+      existingKeys.add(key);
+      const { row, upBtn, downBtn } = createFileListRow({ name: relativePath, size: file.size }, () => {
+        if (encState.busy) return;
+        encState.files = encState.files.filter((e) => e !== entry);
+        row.remove();
+        updateFileListSummary(fileListSummary, encState.files.map((e) => e.file));
+        resetEncryptResultUI();
+        updateEncryptButtonState();
+      }, { reorder: true });
+      const entry = { file, relativePath, row };
+      upBtn.addEventListener('click', () => { if (!encState.busy) reorderListEntry(encState.files, entry, -1, fileList); });
+      downBtn.addEventListener('click', () => { if (!encState.busy) reorderListEntry(encState.files, entry, 1, fileList); });
+      fileList.appendChild(row);
+      encState.files.push(entry);
+    }
+    updateFileListSummary(fileListSummary, encState.files.map((e) => e.file));
+    resetEncryptResultUI();
+    updateEncryptButtonState();
+  }
+
+  dropzone.addEventListener('click', () => { if (!encState.busy) fileInput.click(); });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files && fileInput.files.length) addEncryptFiles(Array.from(fileInput.files));
+    fileInput.value = '';
+  });
+  ['dragover', 'dragenter'].forEach((evt) => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      if (!encState.busy) dropzone.classList.add('drag-over');
+    });
+  });
+  ['dragleave', 'dragend'].forEach((evt) => {
+    dropzone.addEventListener(evt, () => dropzone.classList.remove('drag-over'));
+  });
+  dropzone.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('drag-over');
+    if (encState.busy) return;
+    if (!e.dataTransfer) return;
+    const items = await getDroppedItems(e.dataTransfer);
+    if (items.length) addEncryptFiles(items);
+  });
+
+  cameraCaptureBtn.addEventListener('click', () => { if (!encState.busy) cameraInput.click(); });
+  cameraInput.addEventListener('change', () => {
+    if (cameraInput.files && cameraInput.files.length) addEncryptFiles(Array.from(cameraInput.files));
+    cameraInput.value = '';
+  });
+
+  /* ---------- Folder picker (click-to-browse alternative to drag-drop) ---------- */
+  const folderPickBtn = $('folder-pick-btn');
+  const folderInput = $('folder-input');
+  encControls.push(folderPickBtn);
+  if ('webkitdirectory' in document.createElement('input')) {
+    folderPickBtn.hidden = false;
+  }
+  folderPickBtn.addEventListener('click', () => { if (!encState.busy) folderInput.click(); });
+  folderInput.addEventListener('change', () => {
+    if (folderInput.files && folderInput.files.length) {
+      const items = Array.from(folderInput.files).map((file) => ({ file, relativePath: file.webkitRelativePath || file.name }));
+      addEncryptFiles(items);
+    }
+    folderInput.value = '';
+  });
+
+  textInput.addEventListener('input', () => {
+    resetEncryptResultUI();
+    updateEncryptButtonState();
+  });
+
+  function updateStrengthMeter() {
+    const { score, label, color } = estimateStrength(encPassword.value);
+    strengthFill.style.width = (score * 20) + '%';
+    strengthFill.style.background = color;
+    strengthLabel.textContent = label;
+  }
+
+  function updatePasswordMatch() {
+    const pw = encPassword.value;
+    const cf = encConfirm.value;
+    if (!cf) {
+      matchHint.textContent = 'There is no password recovery — if it\'s lost, the data is unrecoverable.';
+      matchHint.className = 'field-hint';
+    } else if (pw === cf) {
+      matchHint.textContent = '✓ Passwords match';
+      matchHint.className = 'field-hint match-ok';
+    } else {
+      matchHint.textContent = "✗ Passwords don't match";
+      matchHint.className = 'field-hint match-bad';
+    }
+  }
+
+  encPassword.addEventListener('input', () => {
+    updateStrengthMeter();
+    updatePasswordMatch();
+    updateEncryptButtonState();
+  });
+  encConfirm.addEventListener('input', () => {
+    updatePasswordMatch();
+    updateEncryptButtonState();
+  });
+
+  /* ---------- Password generator ---------- */
+  passwordGenerateBtn.addEventListener('click', () => {
+    let pw;
+    try {
+      pw = generateStrongPassword(20);
+    } catch (e) {
+      showError(encryptError, e.message || "Couldn't generate a password.");
+      return;
+    }
+    encPassword.value = pw;
+    encConfirm.value = pw;
+    encPassword.type = 'text';
+    encConfirm.type = 'text';
+    document.querySelectorAll('.toggle-visibility').forEach((btn) => {
+      if (btn.dataset.target === 'encrypt-password' || btn.dataset.target === 'encrypt-password-confirm') {
+        btn.setAttribute('aria-label', 'Hide password');
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.24 4.24M6.6 6.7C3.9 8.3 2 12 2 12s4 7 11 7c1.9 0 3.5-.4 4.9-1.1M17.9 17.9C20.4 16.1 22 12 22 12s-1.4-2.5-4-4.4M9.9 4.2C10.6 4.1 11.3 4 12 4c7 0 11 7 11 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+      }
+    });
+    updateStrengthMeter();
+    updatePasswordMatch();
+    updateEncryptButtonState();
+  });
+
+  let clipboardClearTimer = null;
+  passwordCopyBtn.addEventListener('click', async () => {
+    const pw = encPassword.value;
+    if (!pw) return;
+    const method = await copyTextToClipboard(pw);
+
+    if (method === 'modern') {
+      passwordCopyHint.textContent = 'Copied — will clear from clipboard in 30s.';
+      passwordCopyHint.className = 'field-hint match-ok';
+      if (clipboardClearTimer) clearTimeout(clipboardClearTimer);
+      clipboardClearTimer = setTimeout(async () => {
+        try {
+          const current = await navigator.clipboard.readText();
+          if (current === pw) {
+            await navigator.clipboard.writeText('');
+            passwordCopyHint.textContent = 'Clipboard cleared.';
+          }
+        } catch (e) {
+          // Clipboard read not permitted here — nothing we can safely do, so leave it.
+        }
+      }, 30000);
+    } else if (method === 'legacy') {
+      passwordCopyHint.textContent = 'Copied to clipboard.';
+      passwordCopyHint.className = 'field-hint match-ok';
+    } else {
+      // Neither copy method worked (common when this page isn't in a "secure
+      // context" — see the notice at the top). Reveal and select the password
+      // itself so the user can copy it manually.
+      encPassword.type = 'text';
+      document.querySelectorAll('.toggle-visibility').forEach((btn) => {
+        if (btn.dataset.target === 'encrypt-password') {
+          btn.setAttribute('aria-label', 'Hide password');
+          btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.24 4.24M6.6 6.7C3.9 8.3 2 12 2 12s4 7 11 7c1.9 0 3.5-.4 4.9-1.1M17.9 17.9C20.4 16.1 22 12 22 12s-1.4-2.5-4-4.4M9.9 4.2C10.6 4.1 11.3 4 12 4c7 0 11 7 11 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+        }
+      });
+      encPassword.focus();
+      encPassword.select();
+      passwordCopyHint.textContent = "Couldn't copy automatically in this browser — the password above is now selected, so you can copy it manually (Ctrl+C, or long-press → Copy on mobile).";
+      passwordCopyHint.className = 'field-hint match-bad';
+    }
+  });
+
+  /* ---------- Keyfile ---------- */
+  function setEncryptKeyfile(bytes, name) {
+    encState.keyfileBytes = bytes;
+    encState.keyfileName = name;
+    encKeyfileName.textContent = name;
+    encKeyfileChip.hidden = !bytes;
+    resetEncryptResultUI();
+    updateEncryptButtonState();
+  }
+  encKeyfilePickBtn.addEventListener('click', () => encKeyfileInput.click());
+  encKeyfileInput.addEventListener('change', async () => {
+    const file = encKeyfileInput.files && encKeyfileInput.files[0];
+    encKeyfileInput.value = '';
+    if (!file) return;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    setEncryptKeyfile(bytes, file.name);
+  });
+  encKeyfileGenBtn.addEventListener('click', () => {
+    const bytes = crypto.getRandomValues(new Uint8Array(64));
+    const filename = `securezip-keyfile-${nowStamp()}.key`;
+    downloadBlob(new Blob([bytes], { type: 'application/octet-stream' }), filename);
+    setEncryptKeyfile(bytes, filename);
+  });
+  encKeyfileRemove.addEventListener('click', () => setEncryptKeyfile(null, null));
+
+  /* ---------- Multi-recipient ---------- */
+  let recipientUidCounter = 0;
+
+  function renumberRecipientLabels() {
+    encState.recipients.forEach((r, i) => {
+      const labelEl = r.row.querySelector('.recipient-row-header span');
+      if (labelEl) labelEl.textContent = `Recipient ${i + 2}`; // recipient 1 is the main password field above
+    });
+    encAddRecipientBtn.disabled = encState.recipients.length >= MAX_SLOTS_PER_VOLUME - 1;
+  }
+
+  function createRecipientRow() {
+    const uid = ++recipientUidCounter;
+    const entry = { uid, keyfileBytes: null, keyfileName: null };
+
+    const row = document.createElement('div');
+    row.className = 'recipient-row';
+
+    const header = document.createElement('div');
+    header.className = 'recipient-row-header';
+    const label = document.createElement('span');
+    label.textContent = 'Additional recipient';
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.textContent = '×';
+    removeBtn.setAttribute('aria-label', 'Remove this recipient');
+    removeBtn.addEventListener('click', () => {
+      if (encState.busy) return;
+      encState.recipients = encState.recipients.filter((r) => r.uid !== uid);
+      row.remove();
+      renumberRecipientLabels();
+      resetEncryptResultUI();
+      updateEncryptButtonState();
+    });
+    header.appendChild(label);
+    header.appendChild(removeBtn);
+    row.appendChild(header);
+
+    const pwField = document.createElement('div');
+    pwField.className = 'password-field';
+    const pwInput = document.createElement('input');
+    pwInput.type = 'password';
+    pwInput.id = `encrypt-recipient-password-${uid}`;
+    pwInput.autocomplete = 'new-password';
+    pwInput.placeholder = 'Password for this recipient';
+    const pwToggle = document.createElement('button');
+    pwToggle.type = 'button';
+    pwToggle.className = 'toggle-visibility';
+    pwToggle.dataset.target = pwInput.id;
+    pwToggle.setAttribute('aria-label', 'Show password');
+    pwToggle.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/></svg>';
+    wireToggleVisibility(pwToggle);
+    pwField.appendChild(pwInput);
+    pwField.appendChild(pwToggle);
+    row.appendChild(pwField);
+
+    const confirmInput = document.createElement('input');
+    confirmInput.type = 'password';
+    confirmInput.autocomplete = 'new-password';
+    confirmInput.placeholder = 'Confirm password';
+    row.appendChild(confirmInput);
+
+    const matchHint = document.createElement('p');
+    matchHint.className = 'field-hint';
+    row.appendChild(matchHint);
+
+    function updateMatch() {
+      if (!confirmInput.value) {
+        matchHint.textContent = '';
+        matchHint.className = 'field-hint';
+      } else if (pwInput.value === confirmInput.value) {
+        matchHint.textContent = '✓ Passwords match';
+        matchHint.className = 'field-hint match-ok';
+      } else {
+        matchHint.textContent = "✗ Passwords don't match";
+        matchHint.className = 'field-hint match-bad';
+      }
+      resetEncryptResultUI();
+      updateEncryptButtonState();
+    }
+    pwInput.addEventListener('input', updateMatch);
+    confirmInput.addEventListener('input', updateMatch);
+
+    const kfRow = document.createElement('div');
+    kfRow.className = 'recipient-keyfile-row';
+    const kfBtn = document.createElement('button');
+    kfBtn.type = 'button';
+    kfBtn.className = 'secondary-btn';
+    kfBtn.textContent = 'Add keyfile (optional)';
+    const kfInput = document.createElement('input');
+    kfInput.type = 'file';
+    kfInput.className = 'visually-hidden';
+    kfInput.tabIndex = -1;
+    const kfNameEl = document.createElement('span');
+    const kfRemoveBtn = document.createElement('button');
+    kfRemoveBtn.type = 'button';
+    kfRemoveBtn.textContent = 'Remove keyfile';
+    kfRemoveBtn.hidden = true;
+    kfBtn.addEventListener('click', () => kfInput.click());
+    kfInput.addEventListener('change', async () => {
+      const file = kfInput.files && kfInput.files[0];
+      kfInput.value = '';
+      if (!file) return;
+      entry.keyfileBytes = new Uint8Array(await file.arrayBuffer());
+      entry.keyfileName = file.name;
+      kfNameEl.textContent = `Keyfile: ${file.name}`;
+      kfRemoveBtn.hidden = false;
+      resetEncryptResultUI();
+    });
+    kfRemoveBtn.addEventListener('click', () => {
+      entry.keyfileBytes = null;
+      entry.keyfileName = null;
+      kfNameEl.textContent = '';
+      kfRemoveBtn.hidden = true;
+      resetEncryptResultUI();
+    });
+    kfRow.appendChild(kfBtn);
+    kfRow.appendChild(kfInput);
+    kfRow.appendChild(kfNameEl);
+    kfRow.appendChild(kfRemoveBtn);
+    row.appendChild(kfRow);
+
+    entry.row = row;
+    entry.passwordInput = pwInput;
+    entry.confirmInput = confirmInput;
+    return entry;
+  }
+
+  encAddRecipientBtn.addEventListener('click', () => {
+    if (encState.busy || encState.recipients.length >= MAX_SLOTS_PER_VOLUME - 1) return;
+    const entry = createRecipientRow();
+    encRecipientsList.appendChild(entry.row);
+    encState.recipients.push(entry);
+    renumberRecipientLabels();
+    resetEncryptResultUI();
+    updateEncryptButtonState();
+  });
+
+  /* ---------- Decoy volume ---------- */
+  encDecoyEnable.addEventListener('change', () => {
+    encState.decoyEnabled = encDecoyEnable.checked;
+    encDecoyFields.hidden = !encState.decoyEnabled;
+    resetEncryptResultUI();
+    updateEncryptButtonState();
+  });
+
+  function updateDecoyMatch() {
+    if (!encDecoyConfirm.value) {
+      decoyMatchHint.textContent = '';
+      decoyMatchHint.className = 'field-hint';
+    } else if (encDecoyPassword.value === encDecoyConfirm.value) {
+      decoyMatchHint.textContent = '✓ Passwords match';
+      decoyMatchHint.className = 'field-hint match-ok';
+    } else {
+      decoyMatchHint.textContent = "✗ Passwords don't match";
+      decoyMatchHint.className = 'field-hint match-bad';
+    }
+    resetEncryptResultUI();
+    updateEncryptButtonState();
+  }
+  encDecoyPassword.addEventListener('input', updateDecoyMatch);
+  encDecoyConfirm.addEventListener('input', updateDecoyMatch);
+  encDecoyText.addEventListener('input', () => { resetEncryptResultUI(); updateEncryptButtonState(); });
+
+  /* ---------- Advanced: PBKDF2 iterations ---------- */
+  encIterationsRange.addEventListener('input', () => {
+    const value = parseInt(encIterationsRange.value, 10);
+    encState.iterations = value;
+    encIterationsValue.textContent = value.toLocaleString();
+    savePrefs({ iterations: value });
+  });
+
+  /* ---------- Advanced: split into parts ---------- */
+  encSplitSelect.addEventListener('change', () => {
+    encState.splitSize = parseInt(encSplitSelect.value, 10) || 0;
+    savePrefs({ splitSize: encState.splitSize });
+  });
+
+  function isEncryptReady() {
+    const hasInput = encState.inputMode === 'file' ? encState.files.length > 0 : textInput.value.trim().length > 0;
+    if (!hasInput) return false;
+    const op = operationFlags(encState.operation);
+    if (op.compress && !compressionOK) return false;
+    if (op.encrypt && !cryptoOK) return false;
+    if (op.encrypt) {
+      const pw = encPassword.value;
+      if (!(pw.length >= 4 && pw === encConfirm.value)) return false;
+      for (const r of encState.recipients) {
+        if (!(r.passwordInput.value.length >= 4 && r.passwordInput.value === r.confirmInput.value)) return false;
+      }
+      if (encState.decoyEnabled) {
+        if (!encDecoyText.value.trim().length) return false;
+        if (!(encDecoyPassword.value.length >= 4 && encDecoyPassword.value === encDecoyConfirm.value)) return false;
+      }
+      return true;
+    }
+    return true;
+  }
+  function updateEncryptButtonState() {
+    encryptBtn.disabled = encState.busy || !isEncryptReady();
+  }
+
+  function resetEncryptResultUI() {
+    encryptError.hidden = true;
+    encryptResults.hidden = true;
+    encryptResultsList.innerHTML = '';
+  }
+
+  const ENCRYPT_PHASES_BOTH = {
+    assemble: { label: 'Compressing…', start: 0, end: 70 },
+    derive: { label: 'Deriving key (PBKDF2)…', start: 70, end: 80 },
+    encrypt: { label: 'Encrypting (AES-256-GCM)…', start: 80, end: 95 },
+    finalize: { label: 'Finalizing…', start: 95, end: 100 },
+    done: { label: 'Done', start: 100, end: 100 }
+  };
+  const ENCRYPT_PHASES_COMPRESS_ONLY = {
+    assemble: { label: 'Compressing…', start: 0, end: 95 },
+    finalize: { label: 'Finalizing…', start: 95, end: 100 },
+    done: { label: 'Done', start: 100, end: 100 }
+  };
+  const ENCRYPT_PHASES_ENCRYPT_ONLY = {
+    assemble: { label: 'Reading…', start: 0, end: 70 },
+    derive: { label: 'Deriving key (PBKDF2)…', start: 70, end: 80 },
+    encrypt: { label: 'Encrypting (AES-256-GCM)…', start: 80, end: 95 },
+    finalize: { label: 'Finalizing…', start: 95, end: 100 },
+    done: { label: 'Done', start: 100, end: 100 }
+  };
+  function phaseMapFor(op) {
+    if (op === 'compress') return ENCRYPT_PHASES_COMPRESS_ONLY;
+    if (op === 'encrypt') return ENCRYPT_PHASES_ENCRYPT_ONLY;
+    return ENCRYPT_PHASES_BOTH;
+  }
+
+  function buildEncryptStatsLine(result) {
+    const parts = [formatBytes(result.originalSize)];
+    if (result.didCompress) {
+      const ratio = result.originalSize > 0 ? 100 * (1 - result.assembledSize / result.originalSize) : 0;
+      parts.push(`→ ${formatBytes(result.assembledSize)} (${ratio >= 0 ? '−' : '+'}${Math.abs(ratio).toFixed(1)}%)`);
+    }
+    parts.push(`→ ${formatBytes(result.finalSize)}${result.didEncrypt ? ' sealed' : ''}`);
+    return parts.join(' ');
+  }
+
+  function buildEncryptJobs() {
+    if (encState.inputMode === 'file') {
+      return encState.files.map(({ file, relativePath }) => {
+        const name = relativePath || file.name;
+        return {
+          name,
+          source: file,
+          size: file.size,
+          meta: { name, kind: 'file', mime: file.type || 'application/octet-stream', size: file.size }
+        };
+      });
+    }
+    const text = textInput.value;
+    const bytes = new TextEncoder().encode(text);
+    const name = `securezip-note-${nowStamp()}.txt`;
+    return [{ name, source: bytes, size: bytes.byteLength, meta: { name, kind: 'text', mime: 'text/plain', size: bytes.byteLength } }];
+  }
+
+  encryptBtn.addEventListener('click', async () => {
+    if (!isEncryptReady()) return;
+
+    resetEncryptResultUI();
+    setEncryptBusy(true);
+    encryptProcess.hidden = false;
+    encryptProgressFill.style.width = '0%';
+    encryptPhasePct.textContent = '';
+    const tickerId = startTicker(encryptTicker);
+
+    try {
+      const operation = operationFlags(encState.operation);
+      const jobs = buildEncryptJobs();
+      const phaseMap = phaseMapFor(encState.operation);
+      const password = encPassword.value;
+      let successCount = 0;
+      const zipEntries = [];
+
+      for (let i = 0; i < jobs.length; i++) {
+        const job = jobs[i];
+        const prefix = jobs.length > 1 ? `File ${i + 1}/${jobs.length} — ${job.name}: ` : '';
+        const onPhase = makePhaseUpdater(phaseMap, encryptPhaseLabel, encryptPhasePct, encryptProgressFill, prefix);
+        const useRawGzip = encState.operation === 'compress' && encState.outputFormat === 'gz';
+        const useMultiVolume = operation.encrypt && (encState.recipients.length > 0 || encState.decoyEnabled);
+        try {
+          let outBytes, statsLine, usedKeyfile;
+          if (useRawGzip) {
+            outBytes = await runPlainGzipEncode(job.source, job.size, (f) => onPhase('assemble', f));
+            onPhase('finalize', null);
+            const ratio = job.size > 0 ? 100 * (1 - outBytes.byteLength / job.size) : 0;
+            statsLine = `${formatBytes(job.size)} → ${formatBytes(outBytes.byteLength)} (${ratio >= 0 ? '−' : '+'}${Math.abs(ratio).toFixed(1)}%)`;
+            usedKeyfile = false;
+            onPhase('done', 1);
+          } else if (useMultiVolume) {
+            const recipients = [
+              { password, keyfileBytes: encState.keyfileBytes },
+              ...encState.recipients.map((r) => ({ password: r.passwordInput.value, keyfileBytes: r.keyfileBytes }))
+            ];
+            const decoyConfig = encState.decoyEnabled ? {
+              text: encDecoyText.value,
+              password: encDecoyPassword.value,
+              iterations: encState.iterations
+            } : null;
+            const result = await runMultiVolumeEncryptPipeline(recipients, job.meta, job.source, job.size, operation, encState.iterations, decoyConfig, onPhase);
+            outBytes = result.out;
+            statsLine = buildEncryptStatsLine(result)
+              + (result.recipientCount > 1 ? ` · ${result.recipientCount} recipients` : '')
+              + (result.hasDecoy ? ' · decoy included' : '');
+            usedKeyfile = result.usedKeyfile;
+          } else {
+            const result = await runEncryptPipeline(password, job.meta, job.source, job.size, operation, encState.iterations, encState.keyfileBytes, onPhase);
+            outBytes = result.out;
+            statsLine = buildEncryptStatsLine(result);
+            usedKeyfile = result.usedKeyfile;
+          }
+
+          const filename = sanitizeFilename(job.meta.name) + (useRawGzip ? '.gz' : '.sxz');
+          const zipPath = sanitizeZipPath(job.meta.name) + (useRawGzip ? '.gz' : '.sxz');
+          const fingerprint = await sha256Hex(outBytes);
+          const shouldSplit = encState.splitSize > 0 && outBytes.byteLength > encState.splitSize;
+
+          if (shouldSplit) {
+            const rawParts = splitIntoParts(outBytes, encState.splitSize);
+            const padWidth = String(rawParts.length).length;
+            const namedParts = rawParts.map((bytes, i) => ({
+              name: `${filename}.part${String(i + 1).padStart(padWidth, '0')}of${rawParts.length}`,
+              bytes
+            }));
+            encryptResultsList.appendChild(createResultRow({
+              status: 'done',
+              name: job.meta.name + ' → ' + filename,
+              statsLine: statsLine + (usedKeyfile ? ' · keyfile' : '') + ` · split into ${namedParts.length} parts`,
+              fingerprint,
+              parts: namedParts,
+              partsZipName: sanitizeFilename(job.meta.name) + '-parts'
+            }));
+            rawParts.forEach((bytes, i) => {
+              zipEntries.push({ name: `${zipPath}.part${String(i + 1).padStart(padWidth, '0')}of${rawParts.length}`, bytes });
+            });
+          } else {
+            const blob = new Blob([outBytes], { type: 'application/octet-stream' });
+            encryptResultsList.appendChild(createResultRow({
+              status: 'done',
+              name: job.meta.name + ' → ' + filename,
+              statsLine: statsLine + (usedKeyfile ? ' · keyfile' : ''),
+              fingerprint,
+              onDownload: () => downloadBlob(blob, filename),
+              getCopyAsText: () => bytesToBase64(outBytes),
+              getShareFile: () => new File([blob], filename, { type: 'application/octet-stream' })
+            }));
+            zipEntries.push({ name: zipPath, bytes: outBytes });
+          }
+          successCount++;
+        } catch (err) {
+          encryptResultsList.appendChild(createResultRow({
+            status: 'error',
+            name: job.meta.name,
+            errorMessage: err.message || 'Encryption failed unexpectedly.'
+          }));
+        }
+      }
+
+      encryptResultsTitle.textContent = OPERATION_RESULT_TITLES[encState.operation];
+      encryptResultsIcon.innerHTML = OPERATION_ICONS[encState.operation];
+      encryptResultsSubtitle.textContent = summarizeOutcome(successCount, jobs.length);
+      encryptResults.hidden = false;
+
+      encState.zipEntries = zipEntries;
+      encryptDownloadAllWrap.hidden = !(jobs.length > 1 && zipEntries.length > 0);
+    } catch (err) {
+      showError(encryptError, err.message || 'Something unexpected happened while processing your files.');
+    } finally {
+      stopTicker(tickerId, encryptTicker);
+      encryptProcess.hidden = true;
+      setEncryptBusy(false);
+      updateEncryptButtonState();
+    }
+  });
+
+  encryptDownloadAllBtn.addEventListener('click', () => {
+    if (!encState.zipEntries.length) return;
+    const zipBytes = buildZip(encState.zipEntries);
+    downloadBlob(new Blob([zipBytes], { type: 'application/zip' }), `securezip-batch-${nowStamp()}.zip`);
+  });
+
+  /* =========================================================
+     DECRYPT panel state & logic
+  ========================================================= */
+  const decState = {
+    files: [],
+    busy: false,
+    zipEntries: [],
+    keyfileBytes: null,
+    keyfileName: null,
+    inputMode: 'file', // 'file' | 'paste'
+    thumbUrls: [],
+    partGroups: new Map() // groupIdHex -> { total, received: Map(index -> Uint8Array), row, key }
+  };
+
+  const decInputToggleFile = $('decrypt-input-toggle-file');
+  const decInputTogglePaste = $('decrypt-input-toggle-paste');
+  const decInputViewFile = $('input-view-decrypt-file');
+  const decInputViewPaste = $('input-view-decrypt-paste');
+  const decPasteInput = $('decrypt-paste-input');
+  const decDropzone = $('decrypt-dropzone');
+  const decFileInput = $('decrypt-file-input');
+  const decFileList = $('decrypt-file-list');
+  const decFileListSummary = $('decrypt-file-list-summary');
+  const decPassword = $('decrypt-password');
+  const decKeyfilePickBtn = $('decrypt-keyfile-pick-btn');
+  const decKeyfileInput = $('decrypt-keyfile-input');
+  const decKeyfileChip = $('decrypt-keyfile-chip');
+  const decKeyfileName = $('decrypt-keyfile-name');
+  const decKeyfileRemove = $('decrypt-keyfile-remove');
+  const decryptBtn = $('decrypt-btn');
+  const decryptProcess = $('decrypt-process');
+  const decryptPhaseLabel = $('decrypt-phase-label');
+  const decryptPhasePct = $('decrypt-phase-pct');
+  const decryptProgressFill = $('decrypt-progress-fill');
+  const decryptTicker = $('decrypt-ticker');
+  const decryptError = $('decrypt-error');
+  const decryptResults = $('decrypt-results');
+  const decryptResultsSubtitle = $('decrypt-results-subtitle');
+  const decryptResultsList = $('decrypt-results-list');
+  const decryptDownloadAllWrap = $('decrypt-download-all-wrap');
+  const decryptDownloadAllBtn = $('decrypt-download-all');
+  const decryptVerifyBtn = $('decrypt-verify-btn');
+  const decryptVerifyHint = $('decrypt-verify-hint');
+
+  const decControls = [decInputToggleFile, decInputTogglePaste, decDropzone, decPasteInput,
+    decKeyfilePickBtn, decPassword, decryptBtn, decryptVerifyBtn];
+
+  function setDecryptBusy(busy) {
+    decState.busy = busy;
+    decControls.forEach((el) => { el.disabled = busy; });
+    document.querySelectorAll('#decrypt-file-list .file-list-remove').forEach((btn) => { btn.disabled = busy; });
+  }
+
+  function resetDecryptResultUI() {
+    decryptError.hidden = true;
+    decryptResults.hidden = true;
+    decryptResultsList.innerHTML = '';
+    decState.thumbUrls.forEach((url) => { try { URL.revokeObjectURL(url); } catch (e) {} });
+    decState.thumbUrls = [];
+    document.querySelectorAll('#decrypt-file-list .verify-badge').forEach((el) => el.remove());
+    if (decryptVerifyHint) { decryptVerifyHint.textContent = ''; decryptVerifyHint.className = 'field-hint'; }
+  }
+
+  function applyPeekBadge(main, info) {
+    if (!info.valid) { addFileBadge(main, 'unrecognized', 'badge-invalid'); return; }
+    if (info.needsPassword && info.compressed) addFileBadge(main, 'compressed + encrypted', 'badge-locked');
+    else if (info.needsPassword) addFileBadge(main, 'encrypted', 'badge-locked');
+    else if (info.compressed) addFileBadge(main, 'compressed only', 'badge-plain');
+  }
+
+  function addDecryptEntryRow({ key, name, size, file, presetError, sourceZip, peekBytes, isRawGzip }) {
+    const { row, main, upBtn, downBtn } = createFileListRow({ name, size }, () => {
+      if (decState.busy) return;
+      decState.files = decState.files.filter((e) => e.key !== key);
+      row.remove();
+      updateFileListSummary(decFileListSummary, decState.files);
+      resetDecryptResultUI();
+      updateDecryptButtonState();
+    }, { reorder: true });
+    decFileList.appendChild(row);
+    const entry = { key, name, size, file: file || null, presetError: presetError || null, isRawGzip: !!isRawGzip, row, main };
+    upBtn.addEventListener('click', () => { if (!decState.busy) reorderListEntry(decState.files, entry, -1, decFileList); });
+    downBtn.addEventListener('click', () => { if (!decState.busy) reorderListEntry(decState.files, entry, 1, decFileList); });
+    decState.files.push(entry);
+
+    if (sourceZip) addFileBadge(main, `from ${sourceZip}`, undefined);
+
+    if (presetError) {
+      addFileBadge(main, 'unreadable', 'badge-invalid');
+      return;
+    }
+
+    if (isRawGzip) {
+      addFileBadge(main, 'raw gzip', 'badge-plain');
+    } else if (peekBytes) {
+      peekSxzInfo(peekBytes).then((info) => applyPeekBadge(main, info)).catch(() => {});
+    } else {
+      file.slice(0, 6).arrayBuffer().then((buf) => peekSxzInfo(new Uint8Array(buf))).then((info) => applyPeekBadge(main, info)).catch(() => {});
+    }
+
+    // Best-effort fingerprint so the user can verify against a sender-provided hash before decrypting
+    if (file && cryptoOK) {
+      file.arrayBuffer().then((buf) => sha256Hex(new Uint8Array(buf))).then((hex) => {
+        if (!hex) return;
+        const fp = document.createElement('span');
+        fp.className = 'file-fingerprint';
+        fp.title = 'Full SHA-256 (click to copy): ' + hex;
+        fp.textContent = 'sha256:' + hex.slice(0, 8) + '…';
+        fp.addEventListener('click', async () => {
+          const method = await copyTextToClipboard(hex);
+          const orig = fp.textContent;
+          if (method) {
+            fp.textContent = 'copied ✓';
+          } else {
+            fallbackManualCopy(hex);
+            fp.textContent = 'see popup';
+          }
+          setTimeout(() => { fp.textContent = orig; }, 1200);
+        });
+        main.appendChild(fp);
+      }).catch(() => {});
+    }
+  }
+
+  function baseNameWithoutPartSuffix(name) {
+    return name.replace(/\.part\d+of\d+$/i, '');
+  }
+
+  /* Creates or updates the placeholder row shown while a multi-part group
+     is still incomplete. Once complete, the caller removes this row and
+     adds a normal decrypt entry in its place. */
+  function updatePartGroupRow(gidHex, group) {
+    if (!group.row) {
+      const { row, main } = createFileListRow({ name: 'Multi-part file — assembling…', size: 0 }, () => {
+        decState.partGroups.delete(gidHex);
+        decState.files = decState.files.filter((e) => e.key !== group.key);
+        row.remove();
+        updateFileListSummary(decFileListSummary, decState.files);
+        updateDecryptButtonState();
+      }, { reorder: false });
+      group.row = row;
+      group.main = main;
+      decFileList.appendChild(row);
+      group.entry = {
+        key: group.key, name: 'Multi-part file', size: 0, file: null,
+        presetError: 'Still waiting on the remaining parts.', isRawGzip: false, row, main
+      };
+      decState.files.push(group.entry);
+    }
+    group.main.querySelectorAll('.badge-parts').forEach((el) => el.remove());
+    addFileBadge(group.main, `${group.received.size} of ${group.total} parts received`, 'badge-plain badge-parts');
+    group.entry.presetError = `Waiting on ${group.total - group.received.size} more part${group.total - group.received.size === 1 ? '' : 's'} before this can be decrypted.`;
+  }
+
+  function handleIncomingPart(originalFileName, parsed) {
+    const gidHex = groupIdHex(parsed.groupId);
+    let group = decState.partGroups.get(gidHex);
+    if (!group) {
+      group = { total: parsed.totalParts, received: new Map(), names: [], row: null, main: null, entry: null, key: `partgroup::${gidHex}` };
+      decState.partGroups.set(gidHex, group);
+    }
+    if (group.received.has(parsed.partIndex)) return; // already have this one
+    group.received.set(parsed.partIndex, parsed.payload);
+    group.names.push(originalFileName);
+
+    if (group.received.size < group.total) {
+      updatePartGroupRow(gidHex, group);
+      return;
+    }
+
+    // Complete — reassemble in order and swap the placeholder for a real entry.
+    let totalLen = 0;
+    for (let i = 0; i < group.total; i++) totalLen += group.received.get(i).byteLength;
+    const combined = new Uint8Array(totalLen);
+    let offset = 0;
+    for (let i = 0; i < group.total; i++) {
+      const chunk = group.received.get(i);
+      combined.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+
+    if (group.row) group.row.remove();
+    decState.files = decState.files.filter((e) => e.key !== group.key);
+    decState.partGroups.delete(gidHex);
+
+    const displayName = baseNameWithoutPartSuffix(group.names[0]) || `securezip-reassembled-${nowStamp()}.sxz`;
+    const syntheticFile = new File([combined], displayName, { type: 'application/octet-stream' });
+    addDecryptEntryRow({
+      key: `partgroup-done::${gidHex}`, name: displayName, size: syntheticFile.size,
+      file: syntheticFile, peekBytes: combined.slice(0, 6)
+    });
+    showToast(`Reassembled "${displayName}" from ${group.total} parts.`, 3500);
+  }
+
+  async function addDecryptFiles(fileArray) {
+    resetDecryptResultUI();
+    for (const file of fileArray) {
+      const head = new Uint8Array(await file.slice(0, 4).arrayBuffer().catch(() => new ArrayBuffer(0)));
+
+      if (isZipMagic(head)) {
+        let extracted;
+        try {
+          const zipBytes = new Uint8Array(await file.arrayBuffer());
+          extracted = await parseZip(zipBytes);
+        } catch (err) {
+          showError(decryptError, `Couldn't unzip "${file.name}": ${err.message || 'unknown error'}`);
+          continue;
+        }
+        if (extracted.length === 0) {
+          showError(decryptError, `"${file.name}" is a zip file but didn't contain any usable entries.`);
+          continue;
+        }
+        for (const entry of extracted) {
+          const key = `zip::${file.name}::${entry.name}::${entry.size}`;
+          if (decState.files.some((e) => e.key === key)) continue;
+          if (entry.error) {
+            addDecryptEntryRow({ key, name: entry.name, size: entry.size || 0, file: null, presetError: entry.error, sourceZip: file.name });
+          } else {
+            const extractedFile = new File([entry.bytes], entry.name, { type: 'application/octet-stream' });
+            addDecryptEntryRow({ key, name: entry.name, size: extractedFile.size, file: extractedFile, sourceZip: file.name, peekBytes: entry.bytes.slice(0, 6) });
+          }
+        }
+      } else if (isGzipMagic(head)) {
+        const key = dedupeKey(file);
+        if (decState.files.some((e) => e.key === key)) continue;
+        addDecryptEntryRow({ key, name: file.name, size: file.size, file, isRawGzip: true });
+      } else if (isPartMagic(head)) {
+        let partBytes;
+        try {
+          partBytes = new Uint8Array(await file.arrayBuffer());
+        } catch (err) {
+          showError(decryptError, `Couldn't read "${file.name}".`);
+          continue;
+        }
+        try {
+          const parsed = parsePartHeader(partBytes);
+          handleIncomingPart(file.name, parsed);
+        } catch (err) {
+          const key = dedupeKey(file);
+          if (decState.files.some((e) => e.key === key)) continue;
+          addDecryptEntryRow({ key, name: file.name, size: file.size, file: null, presetError: err.message || 'Not a valid part file.' });
+        }
+      } else {
+        const key = dedupeKey(file);
+        if (decState.files.some((e) => e.key === key)) continue;
+        addDecryptEntryRow({ key, name: file.name, size: file.size, file });
+      }
+    }
+    updateFileListSummary(decFileListSummary, decState.files);
+    updateDecryptButtonState();
+  }
+
+  function setDecryptInputMode(mode) {
+    decState.inputMode = mode;
+    decInputToggleFile.classList.toggle('active', mode === 'file');
+    decInputTogglePaste.classList.toggle('active', mode === 'paste');
+    decInputViewFile.hidden = mode !== 'file';
+    decInputViewPaste.hidden = mode !== 'paste';
+    resetDecryptResultUI();
+    updateDecryptButtonState();
+  }
+  decInputToggleFile.addEventListener('click', () => setDecryptInputMode('file'));
+  decInputTogglePaste.addEventListener('click', () => setDecryptInputMode('paste'));
+  decPasteInput.addEventListener('input', () => {
+    resetDecryptResultUI();
+    updateDecryptButtonState();
+  });
+
+  function setDecryptKeyfile(bytes, name) {
+    decState.keyfileBytes = bytes;
+    decState.keyfileName = name;
+    decKeyfileName.textContent = name;
+    decKeyfileChip.hidden = !bytes;
+    resetDecryptResultUI();
+    updateDecryptButtonState();
+  }
+  decKeyfilePickBtn.addEventListener('click', () => decKeyfileInput.click());
+  decKeyfileInput.addEventListener('change', async () => {
+    const file = decKeyfileInput.files && decKeyfileInput.files[0];
+    decKeyfileInput.value = '';
+    if (!file) return;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    setDecryptKeyfile(bytes, file.name);
+  });
+  decKeyfileRemove.addEventListener('click', () => setDecryptKeyfile(null, null));
+
+  decDropzone.addEventListener('click', () => { if (!decState.busy) decFileInput.click(); });
+  decFileInput.addEventListener('change', () => {
+    if (decFileInput.files && decFileInput.files.length) addDecryptFiles(Array.from(decFileInput.files));
+    decFileInput.value = '';
+  });
+  ['dragover', 'dragenter'].forEach((evt) => {
+    decDropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      if (!decState.busy) decDropzone.classList.add('drag-over');
+    });
+  });
+  ['dragleave', 'dragend'].forEach((evt) => {
+    decDropzone.addEventListener(evt, () => decDropzone.classList.remove('drag-over'));
+  });
+  decDropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    decDropzone.classList.remove('drag-over');
+    if (decState.busy) return;
+    if (e.dataTransfer.files && e.dataTransfer.files.length) addDecryptFiles(Array.from(e.dataTransfer.files));
+  });
+
+  decPassword.addEventListener('input', updateDecryptButtonState);
+
+  function isDecryptReady() {
+    if (!(compressionOK || cryptoOK)) return false;
+    if (decState.inputMode === 'paste') return decPasteInput.value.trim().length > 0;
+    return decState.files.length > 0;
+  }
+  function updateDecryptButtonState() {
+    decryptBtn.disabled = decState.busy || !isDecryptReady();
+    decryptVerifyBtn.disabled = decState.busy || !isDecryptReady();
+  }
+
+  const DECRYPT_PHASES = {
+    parse: { label: 'Reading header…', start: 0, end: 5 },
+    derive: { label: 'Deriving key (PBKDF2)…', start: 5, end: 15 },
+    decrypt: { label: 'Verifying & decrypting…', start: 15, end: 30 },
+    decompress: { label: 'Decompressing…', start: 30, end: 95 },
+    finalize: { label: 'Finalizing…', start: 95, end: 100 },
+    done: { label: 'Done', start: 100, end: 100 }
+  };
+
+  function buildDecryptStatsLine(result) {
+    return `${formatBytes(result.encryptedInputSize)} → ${formatBytes(result.recoveredSize)} recovered`;
+  }
+
+  decryptBtn.addEventListener('click', async () => {
+    if (!isDecryptReady()) return;
+
+    resetDecryptResultUI();
+    setDecryptBusy(true);
+    decryptProcess.hidden = false;
+    decryptProgressFill.style.width = '0%';
+    decryptPhasePct.textContent = '';
+    const tickerId = startTicker(decryptTicker);
+
+    try {
+      const password = decPassword.value;
+      const isPasteMode = decState.inputMode === 'paste';
+      const jobs = isPasteMode
+        ? [{ key: 'paste', name: 'Pasted text', file: null, presetError: null, isRawGzip: false, isPaste: true }]
+        : decState.files;
+      let successCount = 0;
+      const zipEntries = [];
+      const thumbUrls = [];
+
+      for (let i = 0; i < jobs.length; i++) {
+        const job = jobs[i];
+        const prefix = jobs.length > 1 ? `File ${i + 1}/${jobs.length} — ${job.name}: ` : '';
+
+        if (job.presetError) {
+          decryptResultsList.appendChild(createResultRow({
+            status: 'error',
+            name: job.name,
+            errorMessage: job.presetError
+          }));
+          continue;
+        }
+
+        const onPhase = makePhaseUpdater(DECRYPT_PHASES, decryptPhaseLabel, decryptPhasePct, decryptProgressFill, prefix);
+        try {
+          const fileBytes = job.isPaste ? base64ToBytes(decPasteInput.value) : new Uint8Array(await job.file.arrayBuffer());
+
+          let meta, data, statsLine;
+          if (job.isRawGzip) {
+            onPhase('parse', null);
+            data = await runPlainGzipDecode(fileBytes, (f) => onPhase('decompress', f));
+            meta = { name: stripGzExtension(job.name), kind: 'file', mime: 'application/octet-stream' };
+            statsLine = `${formatBytes(fileBytes.byteLength)} → ${formatBytes(data.byteLength)} recovered`;
+            onPhase('done', 1);
+          } else {
+            const result = await runDecryptPipeline(password, fileBytes, decState.keyfileBytes, onPhase);
+            meta = result.meta;
+            data = result.data;
+            statsLine = buildDecryptStatsLine(result) + (result.usedKeyfile ? ' · keyfile' : '');
+          }
+
+          if (meta.kind === 'file') {
+            const mime = meta.mime || 'application/octet-stream';
+            const blob = new Blob([data], { type: mime });
+            const outName = meta.name || 'decrypted-file';
+            const downloadName = sanitizeFilename(outName);
+            let thumbUrl = null;
+            let previewKind = null;
+            let previewUrl = null;
+            if (mime.startsWith('image/')) {
+              thumbUrl = URL.createObjectURL(blob);
+              thumbUrls.push(thumbUrl);
+              previewKind = 'image';
+              previewUrl = thumbUrl;
+            } else if (mime.startsWith('audio/')) {
+              previewUrl = URL.createObjectURL(blob);
+              thumbUrls.push(previewUrl);
+              previewKind = 'audio';
+            } else if (mime.startsWith('video/')) {
+              previewUrl = URL.createObjectURL(blob);
+              thumbUrls.push(previewUrl);
+              previewKind = 'video';
+            } else if (mime === 'application/pdf') {
+              previewUrl = URL.createObjectURL(blob);
+              thumbUrls.push(previewUrl);
+              previewKind = 'pdf';
+            }
+            decryptResultsList.appendChild(createResultRow({
+              status: 'done',
+              name: outName,
+              statsLine,
+              thumbUrl,
+              previewKind,
+              previewUrl,
+              onDownload: () => downloadBlob(blob, downloadName),
+              getShareFile: () => new File([blob], downloadName, { type: mime })
+            }));
+            zipEntries.push({ name: sanitizeZipPath(outName), bytes: data });
+          } else {
+            const text = new TextDecoder().decode(data);
+            const outName = meta.name || 'decrypted-text.txt';
+            const downloadName = sanitizeFilename(outName.toLowerCase().endsWith('.txt') ? outName : outName + '.txt');
+            decryptResultsList.appendChild(createResultRow({
+              status: 'done',
+              name: outName,
+              statsLine,
+              textValue: text,
+              getShareFile: () => new File([text], downloadName, { type: 'text/plain' })
+            }));
+            const zipName = sanitizeZipPath(outName.toLowerCase().endsWith('.txt') ? outName : outName + '.txt');
+            zipEntries.push({ name: zipName, bytes: new TextEncoder().encode(text) });
+          }
+          successCount++;
+        } catch (err) {
+          decryptResultsList.appendChild(createResultRow({
+            status: 'error',
+            name: job.name,
+            errorMessage: err.message || 'Decryption failed unexpectedly.'
+          }));
+        }
+      }
+
+      decryptResultsSubtitle.textContent = summarizeOutcome(successCount, jobs.length);
+      decryptResults.hidden = false;
+
+      decState.zipEntries = zipEntries;
+      decState.thumbUrls = thumbUrls;
+      decryptDownloadAllWrap.hidden = !(jobs.length > 1 && zipEntries.length > 0);
+    } catch (err) {
+      showError(decryptError, err.message || 'Something unexpected happened while processing your files.');
+    } finally {
+      stopTicker(tickerId, decryptTicker);
+      decryptProcess.hidden = true;
+      setDecryptBusy(false);
+      updateDecryptButtonState();
+    }
+  });
+
+  decryptDownloadAllBtn.addEventListener('click', () => {
+    if (!decState.zipEntries.length) return;
+    const zipBytes = buildZip(decState.zipEntries);
+    downloadBlob(new Blob([zipBytes], { type: 'application/zip' }), `securezip-restored-${nowStamp()}.zip`);
+  });
+
+  decryptVerifyBtn.addEventListener('click', async () => {
+    if (!isDecryptReady()) return;
+    document.querySelectorAll('#decrypt-file-list .verify-badge').forEach((el) => el.remove());
+    decryptVerifyHint.textContent = '';
+    decryptVerifyHint.className = 'field-hint';
+
+    const originalLabel = decryptVerifyBtn.textContent;
+    decryptBtn.disabled = true;
+    decryptVerifyBtn.disabled = true;
+    decryptVerifyBtn.textContent = 'Verifying…';
+
+    try {
+      const password = decPassword.value;
+      if (decState.inputMode === 'paste') {
+        let bytes;
+        try {
+          bytes = base64ToBytes(decPasteInput.value);
+        } catch (e) {
+          decryptVerifyHint.textContent = e.message || "That doesn't look like valid base64 text.";
+          decryptVerifyHint.className = 'field-hint match-bad';
+          return;
+        }
+        const result = await verifyOneFile(password, bytes, decState.keyfileBytes);
+        decryptVerifyHint.textContent = (result.ok ? '✓ ' : '✗ ') + result.message;
+        decryptVerifyHint.className = 'field-hint ' + (result.ok ? 'match-ok' : 'match-bad');
+      } else {
+        let okCount = 0, total = 0;
+        for (const entry of decState.files) {
+          if (entry.presetError) continue;
+          total++;
+          let result;
+          if (entry.isRawGzip) {
+            result = { ok: true, message: 'No password needed (plain gzip).' };
+          } else {
+            let bytes = null;
+            try { bytes = entry.file ? new Uint8Array(await entry.file.arrayBuffer()) : null; } catch (e) {}
+            result = bytes ? await verifyOneFile(password, bytes, decState.keyfileBytes) : { ok: false, message: "Couldn't read this file." };
+          }
+          if (result.ok) okCount++;
+          if (entry.main) {
+            const badge = document.createElement('span');
+            badge.className = 'file-badge verify-badge ' + (result.ok ? 'badge-verify-ok' : 'badge-verify-bad');
+            badge.textContent = (result.ok ? '✓ ' : '✗ ') + result.message;
+            entry.main.appendChild(badge);
+          }
+        }
+        decryptVerifyHint.textContent = total > 0 ? `Verified ${okCount} of ${total} file${total === 1 ? '' : 's'}.` : 'Nothing to verify.';
+        decryptVerifyHint.className = 'field-hint ' + (total > 0 && okCount === total ? 'match-ok' : 'match-bad');
+      }
+    } finally {
+      decryptVerifyBtn.textContent = originalLabel;
+      updateDecryptButtonState();
+    }
+  });
+
+  /* ---------- Theme ---------- */
+  const themeToggleBtn = $('theme-toggle-btn');
+  const SUN_ICON = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.5v2.5M12 19v2.5M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2.5 12H5M19 12h2.5M4.2 19.8 6 18M18 6l1.8-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  const MOON_ICON = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    themeToggleBtn.innerHTML = theme === 'light' ? MOON_ICON : SUN_ICON;
+    themeToggleBtn.setAttribute('aria-label', theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme');
+  }
+  function loadInitialTheme(prefs) {
+    if (prefs.theme === 'light' || prefs.theme === 'dark') return prefs.theme;
+    try {
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) return 'light';
+    } catch (e) {}
+    return 'dark';
+  }
+
+  /* ---------- Global paste-to-encrypt/decrypt ---------- */
+  document.addEventListener('paste', (e) => {
+    const files = e.clipboardData && e.clipboardData.files;
+    if (!files || files.length === 0) return; // let normal text paste proceed unaffected
+    e.preventDefault();
+    if (mainPanel.dataset.mode === 'encrypt') {
+      if (encState.inputMode !== 'file') setInputMode('file');
+      addEncryptFiles(Array.from(files));
+    } else {
+      if (decState.inputMode !== 'file') setDecryptInputMode('file');
+      addDecryptFiles(Array.from(files));
+    }
+  });
+
+  /* ---------- init ---------- */
+  const storedPrefs = loadPrefs();
+  let currentTheme = loadInitialTheme(storedPrefs);
+  applyTheme(currentTheme);
+  themeToggleBtn.addEventListener('click', () => {
+    currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+    applyTheme(currentTheme);
+    savePrefs({ theme: currentTheme });
+  });
+
+  if (storedPrefs.operation && ['compress', 'encrypt', 'both'].includes(storedPrefs.operation)) {
+    setOperation(storedPrefs.operation, false);
+  }
+  if (storedPrefs.iterations && storedPrefs.iterations >= ITERATIONS_MIN && storedPrefs.iterations <= ITERATIONS_MAX) {
+    encState.iterations = storedPrefs.iterations;
+    encIterationsRange.value = String(storedPrefs.iterations);
+    encIterationsValue.textContent = storedPrefs.iterations.toLocaleString();
+  }
+  if (storedPrefs.splitSize && [0, 10485760, 26214400, 52428800, 104857600].includes(storedPrefs.splitSize)) {
+    encState.splitSize = storedPrefs.splitSize;
+    encSplitSelect.value = String(storedPrefs.splitSize);
+  }
+
+  if (!cryptoOK) {
+    opToggleEncrypt.disabled = true;
+    opToggleBoth.disabled = true;
+    if (operationFlags(encState.operation).encrypt) setOperation('compress', false);
+  }
+  if (!compressionOK) {
+    opToggleCompress.disabled = true;
+    opToggleBoth.disabled = true;
+    if (operationFlags(encState.operation).compress) setOperation('encrypt', false);
+  }
+  updateStrengthMeter();
+  updateEncryptButtonState();
+  updateDecryptButtonState();
+
+  /* =========================================================
+     Auto-clear sensitive fields on idle / when tab is hidden
+  ========================================================= */
+  const IDLE_CLEAR_MS = 5 * 60 * 1000;   // 5 minutes of no interaction
+  const HIDDEN_CLEAR_MS = 60 * 1000;      // 60s after the tab is hidden
+  let lastActivityAt = Date.now();
+  let hiddenTimer = null;
+
+  function hasSensitiveContent() {
+    return !!(
+      encPassword.value || encConfirm.value || decPassword.value || decPasteInput.value ||
+      textInput.value || encState.keyfileBytes || decState.keyfileBytes ||
+      !encryptResults.hidden || !decryptResults.hidden
+    );
+  }
+
+  function clearSensitiveState(reason) {
+    if (encState.busy || decState.busy) return; // never interrupt an in-flight job
+    if (!hasSensitiveContent()) return;
+
+    encPassword.value = '';
+    encConfirm.value = '';
+    decPassword.value = '';
+    decPasteInput.value = '';
+    textInput.value = '';
+    if (encState.keyfileBytes) setEncryptKeyfile(null, null);
+    if (decState.keyfileBytes) setDecryptKeyfile(null, null);
+    resetEncryptResultUI();
+    resetDecryptResultUI();
+    updateStrengthMeter();
+    updatePasswordMatch();
+    updateEncryptButtonState();
+    updateDecryptButtonState();
+
+    showToast(
+      reason === 'hidden'
+        ? 'Cleared passwords and results while this tab was in the background.'
+        : 'Cleared passwords and results after a few minutes of inactivity.',
+      4500
+    );
+  }
+
+  ['keydown', 'mousedown', 'touchstart', 'input', 'pointerdown'].forEach((evt) => {
+    document.addEventListener(evt, () => { lastActivityAt = Date.now(); }, { passive: true, capture: true });
+  });
+
+  setInterval(() => {
+    if (Date.now() - lastActivityAt >= IDLE_CLEAR_MS) clearSensitiveState('idle');
+  }, 10000);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (hiddenTimer) clearTimeout(hiddenTimer);
+      hiddenTimer = setTimeout(() => clearSensitiveState('hidden'), HIDDEN_CLEAR_MS);
+    } else {
+      if (hiddenTimer) { clearTimeout(hiddenTimer); hiddenTimer = null; }
+      lastActivityAt = Date.now();
+    }
+  });
+})();
+</script>
+</body>
+</html>
