@@ -528,6 +528,23 @@
   /* ---------- Field groups ---------- */
   .password-section[hidden] { display: none; }
   .field-group { margin-top: 18px; }
+
+  /* Pairs of closely-related fields (e.g. Password + Confirm) that sit
+     side by side once there's enough room, and stack on narrow screens. */
+  .field-pair-row {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 18px;
+  }
+  .field-pair-row > .field-group { margin-top: 0; }
+  @media (min-width: 640px) {
+    .field-pair-row {
+      flex-direction: row;
+      gap: 16px;
+    }
+    .field-pair-row > * { flex: 1; min-width: 0; }
+  }
   .field-group:first-child { margin-top: 0; }
   .field-group label {
     display: block;
@@ -685,26 +702,6 @@
     font-size: 0.78rem;
     color: var(--paper-faint);
   }
-
-  .decoy-caveat {
-    background: var(--danger-glow);
-    border: 1px solid var(--danger-border);
-    color: var(--danger-text);
-    padding: 10px 12px;
-    border-radius: var(--radius-sm);
-    margin-bottom: 12px;
-  }
-  .decoy-enable-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.88rem;
-    font-weight: 600;
-    cursor: pointer;
-    margin-bottom: 4px;
-  }
-  .decoy-enable-row input { width: 17px; height: 17px; cursor: pointer; accent-color: var(--accent-fill); }
-  #encrypt-decoy-fields { margin-top: 12px; display: flex; flex-direction: column; gap: 14px; }
 
   /* ---------- Advanced disclosure ---------- */
   .advanced-details {
@@ -945,6 +942,66 @@
     color: var(--paper-dim);
     margin-top: 4px;
   }
+  .result-saveas-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 0.8rem;
+    flex-wrap: wrap;
+  }
+  .result-saveas-label { color: var(--paper-faint); flex: none; }
+  .result-saveas-name {
+    font-family: var(--font-mono);
+    color: var(--accent);
+    cursor: pointer;
+    border-bottom: 1px dashed var(--accent-soft);
+    word-break: break-all;
+  }
+  .result-saveas-edit {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--paper-faint);
+    cursor: pointer;
+    padding: 0;
+    border-radius: 4px;
+  }
+  .result-saveas-edit svg { width: 14px; height: 14px; }
+  .result-saveas-edit:hover { color: var(--accent); background: var(--ink-700); }
+  .result-saveas-input {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    background: var(--ink-700);
+    border: 1px solid var(--accent-soft);
+    border-radius: 4px;
+    color: var(--paper);
+    padding: 3px 8px;
+    min-width: 160px;
+    flex: 1;
+  }
+  .result-saveas-input:focus { outline: none; border-color: var(--accent); }
+
+  .pack-zip-panel {
+    margin: 10px 0;
+    padding: 14px;
+    background: var(--ink-800);
+    border: 1px solid var(--accent-soft);
+    border-radius: var(--radius-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    animation: panelEnter 0.25s ease;
+  }
+  .pack-zip-panel .result-saveas-row { font-size: 0.88rem; }
+  .pack-zip-panel .result-saveas-name { font-size: 0.9rem; }
+  .pack-zip-size { font-family: var(--font-mono); font-size: 0.78rem; color: var(--paper-dim); }
+  .pack-zip-actions { display: flex; gap: 10px; margin-top: 2px; }
   .result-fingerprint {
     font-family: var(--font-mono);
     font-size: 0.7rem;
@@ -981,6 +1038,53 @@
   img.result-preview-media { margin: 0 auto; object-fit: contain; }
   audio.result-preview-media, video.result-preview-media { width: 100%; }
   .result-preview-pdf { width: 100%; height: 420px; border: none; }
+
+  .qr-panel {
+    margin-top: 10px;
+    padding: 14px;
+    background: var(--ink-800);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .qr-panel canvas {
+    background: #fff;
+    border-radius: 8px;
+    image-rendering: pixelated;
+    max-width: 100%;
+    height: auto;
+  }
+  .qr-frame-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.82rem;
+    color: var(--paper-dim);
+  }
+  .qr-frame-controls button {
+    background: var(--ink-700);
+    border: 1px solid var(--line);
+    color: var(--paper);
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 0.82rem;
+  }
+  .qr-frame-controls button:hover { border-color: var(--accent-soft); }
+  .qr-frame-label { min-width: 90px; text-align: center; }
+  .qr-panel .field-hint { text-align: center; margin: 0; }
+
+  .qr-video {
+    width: 100%;
+    max-width: 360px;
+    border-radius: var(--radius-sm);
+    background: #000;
+    display: block;
+    margin: 0 auto 8px;
+  }
   .result-error {
     font-size: 0.8rem;
     color: var(--danger-text);
@@ -1145,34 +1249,38 @@
       </div>
 
       <div class="password-section" id="encrypt-password-section">
-        <div class="field-group">
-          <label for="encrypt-password">Password</label>
-          <div class="password-field">
-            <input type="password" id="encrypt-password" autocomplete="new-password" placeholder="Choose a strong password" />
-            <button type="button" class="toggle-visibility" data-target="encrypt-password" aria-label="Show password">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/></svg>
-            </button>
+        <div class="field-pair-row">
+          <div class="field-group">
+            <label for="encrypt-password">Password</label>
+            <div class="password-field">
+              <input type="password" id="encrypt-password" autocomplete="new-password" placeholder="Choose a strong password" />
+              <button type="button" class="toggle-visibility" data-target="encrypt-password" aria-label="Show password">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/></svg>
+              </button>
+            </div>
           </div>
-          <div class="strength-meter">
-            <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
-            <span class="strength-label" id="strength-label"></span>
+
+          <div class="field-group">
+            <label for="encrypt-password-confirm">Confirm password</label>
+            <div class="password-field">
+              <input type="password" id="encrypt-password-confirm" autocomplete="new-password" placeholder="Re-enter password" />
+              <button type="button" class="toggle-visibility" data-target="encrypt-password-confirm" aria-label="Show password">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/></svg>
+              </button>
+            </div>
           </div>
-          <div class="password-actions">
-            <button type="button" class="link-btn" id="password-generate-btn">Generate a strong password</button>
-            <button type="button" class="link-btn" id="password-copy-btn">Copy password</button>
-          </div>
-          <p class="field-hint" id="password-copy-hint"></p>
         </div>
 
-        <div class="field-group">
-          <label for="encrypt-password-confirm">Confirm password</label>
-          <div class="password-field">
-            <input type="password" id="encrypt-password-confirm" autocomplete="new-password" placeholder="Re-enter password" />
-            <button type="button" class="toggle-visibility" data-target="encrypt-password-confirm" aria-label="Show password">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/></svg>
-            </button>
-          </div>
-          <p class="field-hint" id="password-match-hint">There is no password recovery — if it's lost, the data is unrecoverable.</p>
+        <div class="strength-meter">
+          <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
+          <span class="strength-label" id="strength-label"></span>
+        </div>
+        <div class="password-actions">
+          <button type="button" class="link-btn" id="password-generate-btn">Generate a strong password</button>
+          <button type="button" class="link-btn" id="password-copy-btn">Copy password</button>
+        </div>
+        <p class="field-hint" id="password-copy-hint"></p>
+        <p class="field-hint" id="password-match-hint">There is no password recovery — if it's lost, the data is unrecoverable.</p>
         </div>
 
         <div class="field-group">
@@ -1204,39 +1312,6 @@
             <label for="encrypt-iterations-range">PBKDF2 iterations: <span id="encrypt-iterations-value">250,000</span></label>
             <input type="range" id="encrypt-iterations-range" min="100000" max="1000000" step="50000" value="250000" />
             <p class="field-hint">Higher is slower to brute-force, but also slower to encrypt and decrypt. 250,000 is a solid default.</p>
-          </div>
-        </details>
-
-        <details class="advanced-details" id="encrypt-decoy-details">
-          <summary>Add a decoy (advanced)</summary>
-          <p class="field-hint decoy-caveat">
-            A second, different password will reveal separate decoy content instead of your real file — useful as basic misdirection.
-            <strong>This is not true plausible deniability.</strong> Unlike a fixed-size hidden-volume tool, this archive's size can still
-            hint that it holds more than one payload to someone who examines it closely. Don't rely on this alone in a high-stakes situation.
-          </p>
-          <label class="decoy-enable-row">
-            <input type="checkbox" id="encrypt-decoy-enable" />
-            Enable decoy content
-          </label>
-          <div id="encrypt-decoy-fields" hidden>
-            <div class="field-group">
-              <label for="encrypt-decoy-text">Decoy content (text)</label>
-              <textarea id="encrypt-decoy-text" rows="4" placeholder="Something innocuous the decoy password will reveal…"></textarea>
-            </div>
-            <div class="field-group">
-              <label for="encrypt-decoy-password">Decoy password</label>
-              <div class="password-field">
-                <input type="password" id="encrypt-decoy-password" autocomplete="new-password" placeholder="A different password from the real one" />
-                <button type="button" class="toggle-visibility" data-target="encrypt-decoy-password" aria-label="Show password">
-                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/></svg>
-                </button>
-              </div>
-            </div>
-            <div class="field-group">
-              <label for="encrypt-decoy-password-confirm">Confirm decoy password</label>
-              <input type="password" id="encrypt-decoy-password-confirm" autocomplete="new-password" placeholder="Re-enter the decoy password" />
-              <p class="field-hint" id="decoy-password-match-hint"></p>
-            </div>
           </div>
         </details>
       </div>
@@ -1284,10 +1359,11 @@
         </div>
         <div class="results-actions" id="encrypt-download-all-wrap" hidden>
           <button type="button" class="secondary-btn accent-btn" id="encrypt-download-all">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-            Download all (.zip)
+            <svg viewBox="0 0 24 24" fill="none"><path d="M21 8V7a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 14v6m0 0-3-3m3 3 3-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Pack into ZIP
           </button>
         </div>
+        <div class="pack-zip-panel" id="encrypt-pack-zip-panel" hidden></div>
         <div class="results-list" id="encrypt-results-list"></div>
       </div>
     </section>
@@ -1321,6 +1397,24 @@
 
       <div class="input-area" id="input-view-decrypt-paste" data-input-view="paste" hidden>
         <textarea id="decrypt-paste-input" placeholder="Paste the base64 text you got from &quot;Copy as text&quot;…" rows="6"></textarea>
+
+        <details class="advanced-details" id="decrypt-qr-details">
+          <summary>Import from QR instead</summary>
+
+          <div class="field-group" id="decrypt-qr-camera-section">
+            <video id="decrypt-qr-video" playsinline muted class="qr-video" hidden></video>
+            <p class="field-hint" id="decrypt-qr-camera-status"></p>
+            <button type="button" class="secondary-btn" id="decrypt-qr-camera-start">Start camera scan</button>
+            <button type="button" class="secondary-btn" id="decrypt-qr-camera-stop" hidden>Stop camera</button>
+          </div>
+
+          <div class="field-group">
+            <label for="decrypt-qr-paste-pieces">Or paste scanned pieces (one per line, any order)</label>
+            <textarea id="decrypt-qr-paste-pieces" rows="3" placeholder="Scanned with any QR app? Paste each result here, one per line…"></textarea>
+            <button type="button" class="secondary-btn" id="decrypt-qr-reassemble-btn">Reassemble</button>
+            <p class="field-hint" id="decrypt-qr-reassemble-hint"></p>
+          </div>
+        </details>
       </div>
 
       <div class="field-group">
@@ -1382,10 +1476,11 @@
         </div>
         <div class="results-actions" id="decrypt-download-all-wrap" hidden>
           <button type="button" class="secondary-btn accent-btn" id="decrypt-download-all">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-            Download all (.zip)
+            <svg viewBox="0 0 24 24" fill="none"><path d="M21 8V7a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 14v6m0 0-3-3m3 3 3-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Pack into ZIP
           </button>
         </div>
+        <div class="pack-zip-panel" id="decrypt-pack-zip-panel" hidden></div>
         <div class="results-list" id="decrypt-results-list"></div>
       </div>
     </section>
@@ -1396,6 +1491,7 @@
     <p><strong>Everything happens locally.</strong> Files and passwords never leave this browser tab — there is no server, no upload, no analytics.</p>
     <p class="tech-line">AES-256-GCM · PBKDF2-SHA-256 (250,000 iterations) · gzip via CompressionStream</p>
     <p class="tech-line">Password fields, keyfiles, and decrypted results auto-clear after 5 minutes idle, or shortly after this tab is hidden.</p>
+    <p class="tech-line">v14.0.0</p>
   </footer>
 
   <div class="toast" id="global-toast" hidden role="status" aria-live="polite"></div>
@@ -1502,6 +1598,15 @@
   function sanitizeZipPath(name) {
     const segments = String(name).replace(/\\/g, '/').split('/').filter((seg) => seg && seg !== '.' && seg !== '..');
     return segments.map((seg) => seg.replace(/[:*?"<>|\s]+/g, '_').slice(0, 100)).join('/').slice(0, 400) || 'file';
+  }
+
+  /* Swaps just the filename part of a zip path, keeping any folder prefix
+     intact — used so renaming a result also renames its entry inside the
+     "Download all (.zip)" bundle, without losing folder-drop structure. */
+  function replaceZipPathBasename(zipPath, newBaseName) {
+    const idx = zipPath.lastIndexOf('/');
+    const dir = idx === -1 ? '' : zipPath.slice(0, idx + 1);
+    return dir + sanitizeZipPath(newBaseName);
   }
 
   /* =========================================================
@@ -1648,8 +1753,8 @@
   }
 
   /* =========================================================
-     Multi-volume container (v3) — powers both multi-recipient
-     encryption and decoy/deniable volumes with one mechanism.
+     Multi-volume container (v3) — powers multi-recipient encryption
+     (several independent passwords/keyfiles unlocking the same content).
 
      Layout:
        MAGIC(4) version(1)=3 flags(1) volumeCount(1)
@@ -1663,12 +1768,12 @@
      derived key — that's what makes multi-recipient efficient (the
      large payload is only ever encrypted once per volume).
 
-     A decoy archive is just 2 volumes, each with its own CEK and its
-     own independent payload. Decrypting tries the given password
-     against every slot in every volume (in parallel, so timing
-     doesn't hint at which one matched) and returns whichever payload
-     unlocked — with no indication to the caller how many volumes
-     exist in total.
+     The format supports more than one volume per file (an earlier
+     version of this app used that for a decoy/deniable-volume feature,
+     since removed from the UI). Decrypting still tries the given
+     password against every slot in every volume it finds, so old files
+     created with that feature keep working — this app just no longer
+     offers a way to create new ones.
   ========================================================= */
 
   function generateCek() {
@@ -1889,8 +1994,9 @@
       if (version === MULTIVOL_VERSION) {
         if (headBytes.byteLength < 6) return { valid: false };
         const flags = headBytes[5];
-        // Deliberately doesn't say "multi-recipient" or "decoy" here — a file
-        // badge that reveals that would defeat the point for decoy volumes.
+        // Deliberately generic ("encrypted", not "multi-recipient") — old
+        // files made with a since-removed decoy feature still open fine,
+        // and this avoids singling those out in the file badge.
         return { valid: true, needsPassword: true, compressed: !!(flags & FLAG_COMPRESSED), needsKeyfile: false };
       }
       return { valid: false };
@@ -1940,11 +2046,11 @@
   }
 
   /* Used instead of runEncryptPipeline whenever there's more than one
-     recipient and/or a decoy is enabled. Builds a v3 multi-volume
-     container: one "primary" volume (the real content, wrapped for every
-     recipient) plus an optional second "decoy" volume with its own
-     independent password and content. */
-  async function runMultiVolumeEncryptPipeline(recipients, meta, source, totalBytes, operation, iterations, decoyConfig, onPhase) {
+     recipient. Builds a v3 multi-volume container with a single volume
+     (the real content) wrapped for every recipient — this is what lets
+     several different passwords each independently unlock the same file
+     without storing multiple copies of the ciphertext. */
+  async function runMultiVolumeEncryptPipeline(recipients, meta, source, totalBytes, operation, iterations, onPhase) {
     onPhase('assemble', 0);
     const assembled = await assemblePayload(meta, source, totalBytes, operation.compress, (f) => onPhase('assemble', f));
 
@@ -1955,21 +2061,10 @@
       recipients: recipients.map((r) => ({ password: r.password, keyfileBytes: r.keyfileBytes || null }))
     }];
 
-    if (decoyConfig) {
-      const decoyBytes = new TextEncoder().encode(decoyConfig.text);
-      const decoyMeta = { name: 'note.txt', kind: 'text', mime: 'text/plain', size: decoyBytes.byteLength };
-      const decoyAssembled = await assemblePayload(decoyMeta, decoyBytes, decoyBytes.byteLength, operation.compress, () => {});
-      volumes.push({
-        plaintext: decoyAssembled,
-        iterations: decoyConfig.iterations,
-        recipients: [{ password: decoyConfig.password, keyfileBytes: null }]
-      });
-    }
-
     onPhase('derive', null);
     onPhase('encrypt', null);
     const flags = operation.compress ? FLAG_COMPRESSED : 0;
-    const out = await buildV3Container(volumes, flags, volumes.length > 1);
+    const out = await buildV3Container(volumes, flags, false);
 
     onPhase('finalize', null);
     onPhase('done', 1);
@@ -1981,8 +2076,7 @@
       didCompress: operation.compress,
       didEncrypt: true,
       usedKeyfile,
-      recipientCount: recipients.length,
-      hasDecoy: !!decoyConfig
+      recipientCount: recipients.length
     };
   }
 
@@ -2198,6 +2292,537 @@
     }
     return parts;
   }
+
+  /* =========================================================
+     QR code encoder (from-scratch implementation, no external library).
+     Validated by rendering generated codes and decoding them back with
+     an independent QR reader during development.
+  ========================================================= */
+
+/* ===================== GF(256) arithmetic ===================== */
+const GF_EXP = new Array(512);
+const GF_LOG = new Array(256);
+(function initGF() {
+  let x = 1;
+  for (let i = 0; i < 255; i++) {
+    GF_EXP[i] = x;
+    GF_LOG[x] = i;
+    x <<= 1;
+    if (x & 0x100) x ^= 0x11D;
+  }
+  for (let i = 255; i < 512; i++) GF_EXP[i] = GF_EXP[i - 255];
+})();
+
+function gfMul(a, b) {
+  if (a === 0 || b === 0) return 0;
+  return GF_EXP[GF_LOG[a] + GF_LOG[b]];
+}
+
+function polyMul(a, b) {
+  const result = new Array(a.length + b.length - 1).fill(0);
+  for (let i = 0; i < a.length; i++) {
+    for (let j = 0; j < b.length; j++) {
+      result[i + j] ^= gfMul(a[i], b[j]);
+    }
+  }
+  return result;
+}
+
+function rsGeneratorPoly(ecLen) {
+  let g = [1];
+  for (let i = 0; i < ecLen; i++) {
+    g = polyMul(g, [1, GF_EXP[i]]);
+  }
+  return g;
+}
+
+function rsComputeEC(dataCodewords, ecLen) {
+  const generator = rsGeneratorPoly(ecLen);
+  const remainder = dataCodewords.slice();
+  for (let i = 0; i < ecLen; i++) remainder.push(0);
+
+  for (let i = 0; i < dataCodewords.length; i++) {
+    const coef = remainder[i];
+    if (coef !== 0) {
+      for (let j = 0; j < generator.length; j++) {
+        remainder[i + j] ^= gfMul(generator[j], coef);
+      }
+    }
+  }
+  return remainder.slice(dataCodewords.length);
+}
+
+'use strict';
+
+/* EC level bits used in format info: L=01, M=00, Q=11, H=10 (per spec) */
+const EC_LEVEL_BITS = { L: 0b01, M: 0b00, Q: 0b11, H: 0b10 };
+
+/* Codeword table: for each version, per EC level:
+   [totalDataCodewords, ecCodewordsPerBlock, g1Blocks, g1DataLen, g2Blocks, g2DataLen]
+   g2Blocks/g2DataLen are 0 when there's only one group.
+   This is the standard ISO/IEC 18004 table, entered by hand for the
+   versions we plan to support — validated empirically below rather than
+   trusted blindly. */
+const QR_TABLE = {
+  1: { L: [19, 7, 1, 19, 0, 0], M: [16, 10, 1, 16, 0, 0], Q: [13, 13, 1, 13, 0, 0], H: [9, 17, 1, 9, 0, 0] },
+  2: { L: [34, 10, 1, 34, 0, 0], M: [28, 16, 1, 28, 0, 0], Q: [22, 22, 1, 22, 0, 0], H: [16, 28, 1, 16, 0, 0] },
+  3: { L: [55, 15, 1, 55, 0, 0], M: [44, 26, 1, 44, 0, 0], Q: [34, 18, 2, 17, 0, 0], H: [26, 22, 2, 13, 0, 0] },
+  4: { L: [80, 20, 1, 80, 0, 0], M: [64, 18, 2, 32, 0, 0], Q: [48, 26, 2, 24, 0, 0], H: [36, 16, 4, 9, 0, 0] },
+  5: { L: [108, 26, 1, 108, 0, 0], M: [86, 24, 2, 43, 0, 0], Q: [62, 18, 2, 15, 2, 16], H: [46, 22, 2, 11, 2, 12] },
+  6: { L: [136, 18, 2, 68, 0, 0], M: [108, 16, 4, 27, 0, 0], Q: [76, 24, 4, 19, 0, 0], H: [60, 28, 4, 15, 0, 0] },
+  7: { L: [156, 20, 2, 78, 0, 0], M: [124, 18, 4, 31, 0, 0], Q: [88, 18, 2, 14, 4, 15], H: [66, 26, 4, 13, 1, 14] },
+  8: { L: [194, 24, 2, 97, 0, 0], M: [154, 22, 2, 38, 2, 39], Q: [110, 22, 4, 18, 2, 19], H: [86, 26, 4, 14, 2, 15] },
+  9: { L: [232, 30, 2, 116, 0, 0], M: [182, 22, 3, 36, 2, 37], Q: [132, 20, 4, 16, 4, 17], H: [100, 24, 4, 12, 4, 13] },
+  10: { L: [274, 18, 2, 68, 2, 69], M: [216, 26, 4, 43, 1, 44], Q: [154, 24, 6, 19, 2, 20], H: [122, 28, 6, 15, 2, 16] }
+};
+
+const ALIGNMENT_POSITIONS = {
+  1: [], 2: [6, 18], 3: [6, 22], 4: [6, 26], 5: [6, 30],
+  6: [6, 34], 7: [6, 22, 38], 8: [6, 24, 42], 9: [6, 26, 46], 10: [6, 28, 50]
+};
+
+/* Version info bits (versions 7+) — 18-bit BCH(18,6) codes. Only needed for
+   version >= 7, and we won't attempt versions above 10 in this app, so this
+   is only used for versions 7-10. */
+function computeVersionInfoBits(version) {
+  let g = version << 12;
+  const poly = 0b1111100100101; // version info generator polynomial (13 bits)
+  for (let i = 17; i >= 12; i--) {
+    if (g & (1 << i)) g ^= poly << (i - 12);
+  }
+  return (version << 12) | g;
+}
+
+function computeFormatInfoBits(ecLevelBits, maskPattern) {
+  const data = (ecLevelBits << 3) | maskPattern; // 5 bits
+  let g = data << 10;
+  const poly = 0b10100110111; // format info generator polynomial (11 bits)
+  for (let i = 14; i >= 10; i--) {
+    if (g & (1 << i)) g ^= poly << (i - 10);
+  }
+  let bits = (data << 10) | g;
+  bits ^= 0b101010000010010; // mask XOR per spec
+  return bits;
+}
+
+function qrModuleCount(version) { return version * 4 + 17; }
+
+/* ---------- Bit stream ---------- */
+class BitWriter {
+  constructor() { this.bits = []; }
+  push(value, len) {
+    for (let i = len - 1; i >= 0; i--) this.bits.push((value >>> i) & 1);
+  }
+  toBytes() {
+    const bytes = [];
+    for (let i = 0; i < this.bits.length; i += 8) {
+      let b = 0;
+      for (let j = 0; j < 8; j++) b = (b << 1) | (this.bits[i + j] || 0);
+      bytes.push(b);
+    }
+    return bytes;
+  }
+}
+
+function buildByteModeCodewords(dataBytes, version, ecLevel) {
+  const [totalData, ecLen, g1Blocks, g1Len, g2Blocks, g2Len] = QR_TABLE[version][ecLevel];
+  const capacity = totalData * 8;
+
+  const countBits = version <= 9 ? 8 : 16;
+  const headerBits = 4 + countBits;
+  const maxDataBytes = Math.floor((capacity - headerBits) / 8);
+  if (dataBytes.length > maxDataBytes) {
+    throw new Error(`Data too large for QR version ${version} at EC level ${ecLevel}: ${dataBytes.length} bytes given, ${maxDataBytes} max.`);
+  }
+
+  const bw = new BitWriter();
+  bw.push(0b0100, 4); // byte mode indicator
+  bw.push(dataBytes.length, countBits);
+  for (const b of dataBytes) bw.push(b, 8);
+
+  const usedBits = bw.bits.length;
+  const remaining = capacity - usedBits;
+  if (remaining > 0) bw.push(0, Math.min(4, remaining)); // terminator (up to 4 zero bits)
+
+  while (bw.bits.length % 8 !== 0) bw.bits.push(0);
+
+  const padBytes = [0xEC, 0x11];
+  let padIdx = 0;
+  while (bw.bits.length / 8 < totalData) {
+    bw.push(padBytes[padIdx % 2], 8);
+    padIdx++;
+  }
+
+  const dataCodewords = bw.toBytes().slice(0, totalData);
+
+  // Split into blocks
+  const blocks = [];
+  let offset = 0;
+  for (let i = 0; i < g1Blocks; i++) { blocks.push(dataCodewords.slice(offset, offset + g1Len)); offset += g1Len; }
+  for (let i = 0; i < g2Blocks; i++) { blocks.push(dataCodewords.slice(offset, offset + g2Len)); offset += g2Len; }
+
+  const ecBlocks = blocks.map((block) => rsComputeEC(block, ecLen));
+
+  // Interleave data codewords, then interleave EC codewords
+  const maxDataLen = Math.max(...blocks.map((b) => b.length));
+  const interleavedData = [];
+  for (let i = 0; i < maxDataLen; i++) {
+    for (const block of blocks) if (i < block.length) interleavedData.push(block[i]);
+  }
+  const interleavedEc = [];
+  for (let i = 0; i < ecLen; i++) {
+    for (const ec of ecBlocks) interleavedEc.push(ec[i]);
+  }
+
+  return { codewords: interleavedData.concat(interleavedEc), capacityBits: capacity, usedBits, totalData, ecLen, numBlocks: blocks.length };
+}
+
+/* ---------- Module matrix ---------- */
+function createMatrix(version) {
+  const n = qrModuleCount(version);
+  const modules = Array.from({ length: n }, () => new Array(n).fill(false));
+  const reserved = Array.from({ length: n }, () => new Array(n).fill(false));
+  return { n, modules, reserved };
+}
+
+function setModule(mat, r, c, val) {
+  mat.modules[r][c] = val;
+  mat.reserved[r][c] = true;
+}
+
+function placeFinder(mat, r, c) {
+  for (let dr = -1; dr <= 7; dr++) {
+    for (let dc = -1; dc <= 7; dc++) {
+      const rr = r + dr, cc = c + dc;
+      if (rr < 0 || cc < 0 || rr >= mat.n || cc >= mat.n) continue;
+      const isBorder = dr === -1 || dr === 7 || dc === -1 || dc === 7;
+      const isRing = dr >= 0 && dr <= 6 && dc >= 0 && dc <= 6 && (dr === 0 || dr === 6 || dc === 0 || dc === 6);
+      const isCore = dr >= 2 && dr <= 4 && dc >= 2 && dc <= 4;
+      setModule(mat, rr, cc, !isBorder && (isRing || isCore));
+    }
+  }
+}
+
+function placeFunctionPatterns(mat, version) {
+  const n = mat.n;
+  placeFinder(mat, 0, 0);
+  placeFinder(mat, 0, n - 7);
+  placeFinder(mat, n - 7, 0);
+
+  // Timing patterns
+  for (let i = 8; i < n - 8; i++) {
+    setModule(mat, 6, i, i % 2 === 0);
+    setModule(mat, i, 6, i % 2 === 0);
+  }
+
+  // Alignment patterns
+  const positions = ALIGNMENT_POSITIONS[version] || [];
+  for (const r of positions) {
+    for (const c of positions) {
+      // skip if overlapping a finder pattern corner area
+      if ((r <= 8 && c <= 8) || (r <= 8 && c >= n - 9) || (r >= n - 9 && c <= 8)) continue;
+      for (let dr = -2; dr <= 2; dr++) {
+        for (let dc = -2; dc <= 2; dc++) {
+          const dist = Math.max(Math.abs(dr), Math.abs(dc));
+          setModule(mat, r + dr, c + dc, dist !== 1);
+        }
+      }
+    }
+  }
+
+  // Dark module (always present)
+  setModule(mat, 4 * version + 9, 8, true);
+
+  // Reserve format info areas (values filled in later)
+  for (let i = 0; i <= 8; i++) {
+    if (!mat.reserved[8][i]) mat.reserved[8][i] = true;
+    if (!mat.reserved[i][8]) mat.reserved[i][8] = true;
+  }
+  for (let i = 0; i < 8; i++) {
+    mat.reserved[8][n - 1 - i] = true;
+    mat.reserved[n - 1 - i][8] = true;
+  }
+
+  // Reserve version info areas (version >= 7)
+  if (version >= 7) {
+    for (let r = 0; r < 6; r++) for (let c = 0; c < 3; c++) {
+      mat.reserved[r][n - 11 + c] = true;
+      mat.reserved[n - 11 + c][r] = true;
+    }
+  }
+}
+
+function placeData(mat, codewords) {
+  const n = mat.n;
+  const bits = [];
+  for (const byte of codewords) for (let i = 7; i >= 0; i--) bits.push((byte >> i) & 1);
+  let bitIndex = 0;
+  let col = n - 1;
+  let dir = -1; // -1 = going up, 1 = going down
+  while (col > 0) {
+    if (col === 6) col--; // skip timing column
+    for (let i = 0; i < n; i++) {
+      const row = dir === -1 ? n - 1 - i : i;
+      for (const c of [col, col - 1]) {
+        if (mat.reserved[row][c]) continue;
+        const bit = bitIndex < bits.length ? bits[bitIndex] : 0;
+        mat.modules[row][c] = !!bit;
+        mat.reserved[row][c] = true; // mark as placed so masking pass can find data modules separately if needed
+        bitIndex++;
+      }
+    }
+    dir *= -1;
+    col -= 2;
+  }
+  return bitIndex;
+}
+
+/* Track which modules are "data" modules (not function patterns) BEFORE
+   placement marks everything reserved, so masking only applies to data. */
+function computeDataMask(version) {
+  const mat = createMatrix(version);
+  placeFunctionPatterns(mat, version);
+  const isData = mat.reserved.map((row) => row.map((v) => !v));
+  return isData;
+}
+
+function applyMask(mat, isDataModule, maskFn) {
+  const n = mat.n;
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      if (isDataModule[r][c] && maskFn(r, c)) {
+        mat.modules[r][c] = !mat.modules[r][c];
+      }
+    }
+  }
+}
+
+const MASK_FUNCTIONS = [
+  (r, c) => (r + c) % 2 === 0,
+  (r, c) => r % 2 === 0,
+  (r, c) => c % 3 === 0,
+  (r, c) => (r + c) % 3 === 0,
+  (r, c) => (Math.floor(r / 2) + Math.floor(c / 3)) % 2 === 0,
+  (r, c) => ((r * c) % 2) + ((r * c) % 3) === 0,
+  (r, c) => (((r * c) % 2) + ((r * c) % 3)) % 2 === 0,
+  (r, c) => (((r + c) % 2) + ((r * c) % 3)) % 2 === 0
+];
+
+function penaltyScore(mat) {
+  const n = mat.n;
+  const m = mat.modules;
+  let score = 0;
+
+  // Rule 1: runs of 5+ same color in row/col
+  for (let r = 0; r < n; r++) {
+    let runLen = 1;
+    for (let c = 1; c < n; c++) {
+      if (m[r][c] === m[r][c - 1]) runLen++;
+      else { if (runLen >= 5) score += 3 + (runLen - 5); runLen = 1; }
+    }
+    if (runLen >= 5) score += 3 + (runLen - 5);
+  }
+  for (let c = 0; c < n; c++) {
+    let runLen = 1;
+    for (let r = 1; r < n; r++) {
+      if (m[r][c] === m[r - 1][c]) runLen++;
+      else { if (runLen >= 5) score += 3 + (runLen - 5); runLen = 1; }
+    }
+    if (runLen >= 5) score += 3 + (runLen - 5);
+  }
+
+  // Rule 2: 2x2 blocks of same color
+  for (let r = 0; r < n - 1; r++) {
+    for (let c = 0; c < n - 1; c++) {
+      if (m[r][c] === m[r][c + 1] && m[r][c] === m[r + 1][c] && m[r][c] === m[r + 1][c + 1]) score += 3;
+    }
+  }
+
+  // Rule 3: finder-like patterns 1:1:3:1:1 with 4 light before/after
+  const pattern = [true, false, true, true, true, false, true];
+  function matchesPattern(arr, start) {
+    for (let i = 0; i < 7; i++) if (arr[start + i] !== pattern[i]) return false;
+    return true;
+  }
+  for (let r = 0; r < n; r++) {
+    const row = m[r];
+    for (let c = 0; c <= n - 11; c++) {
+      const seg = row.slice(c, c + 11);
+      if (matchesPattern(seg, 0) && seg.slice(7).every((v) => v === false)) score += 40;
+      if (matchesPattern(seg, 4) && seg.slice(0, 4).every((v) => v === false)) score += 40;
+    }
+  }
+  for (let c = 0; c < n; c++) {
+    const col = m.map((row) => row[c]);
+    for (let r = 0; r <= n - 11; r++) {
+      const seg = col.slice(r, r + 11);
+      if (matchesPattern(seg, 0) && seg.slice(7).every((v) => v === false)) score += 40;
+      if (matchesPattern(seg, 4) && seg.slice(0, 4).every((v) => v === false)) score += 40;
+    }
+  }
+
+  // Rule 4: overall dark proportion
+  let dark = 0;
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (m[r][c]) dark++;
+  const percent = (dark / (n * n)) * 100;
+  const deviation = Math.abs(percent - 50) / 5;
+  score += Math.floor(deviation) * 10;
+
+  return score;
+}
+
+function placeFormatInfo(mat, ecLevelBits, maskPattern) {
+  const n = mat.n;
+  const bits = computeFormatInfoBits(ecLevelBits, maskPattern);
+  const bitAt = (i) => !!((bits >> i) & 1);
+
+  // Each array entry i corresponds to bit (14 - i), i.e. entry 0 is the MSB (bit14).
+  const copyA = [
+    [8, 0], [8, 1], [8, 2], [8, 3], [8, 4], [8, 5], [8, 7], [8, 8],
+    [7, 8], [5, 8], [4, 8], [3, 8], [2, 8], [1, 8], [0, 8]
+  ];
+  const copyB = [
+    [n - 1, 8], [n - 2, 8], [n - 3, 8], [n - 4, 8], [n - 5, 8], [n - 6, 8], [n - 7, 8],
+    [8, n - 8], [8, n - 7], [8, n - 6], [8, n - 5], [8, n - 4], [8, n - 3], [8, n - 2], [8, n - 1]
+  ];
+
+  for (let i = 0; i < 15; i++) {
+    const val = bitAt(14 - i);
+    mat.modules[copyA[i][0]][copyA[i][1]] = val;
+    mat.modules[copyB[i][0]][copyB[i][1]] = val;
+  }
+}
+
+function placeVersionInfo(mat, version) {
+  if (version < 7) return;
+  const n = mat.n;
+  const bits = computeVersionInfoBits(version);
+  for (let i = 0; i < 18; i++) {
+    const bit = !!((bits >> i) & 1);
+    const r = Math.floor(i / 3);
+    const c = i % 3;
+    mat.modules[r][n - 11 + c] = bit;
+    mat.modules[n - 11 + c][r] = bit;
+  }
+}
+
+function encodeQR(dataBytes, version, ecLevel) {
+  const { codewords } = buildByteModeCodewords(dataBytes, version, ecLevel);
+  const isDataModule = computeDataMask(version);
+
+  let best = null;
+  for (let maskIdx = 0; maskIdx < 8; maskIdx++) {
+    const mat = createMatrix(version);
+    placeFunctionPatterns(mat, version);
+    placeData(mat, codewords);
+    applyMask(mat, isDataModule, MASK_FUNCTIONS[maskIdx]);
+    placeFormatInfo(mat, EC_LEVEL_BITS[ecLevel], maskIdx);
+    placeVersionInfo(mat, version);
+    const score = penaltyScore(mat);
+    if (!best || score < best.score) best = { mat, score, maskIdx };
+  }
+  return best.mat.modules;
+}
+
+  /* =========================================================
+     QR device-to-device transfer: chunking protocol + rendering.
+
+     Single-frame payloads are encoded as plain base64 with no wrapper,
+     so they can be read by literally any QR scanner and pasted into the
+     existing "paste text" decrypt box. Multi-frame payloads use a small
+     "SXZQ1:<sessionId>:<index>:<total>:<chunk>" text wrapper so pieces
+     scanned out of order (or with any generic scanner one at a time)
+     can still be regrouped and reassembled correctly.
+  ========================================================= */
+  const QR_VERSION = 10;
+  const QR_EC_LEVEL = 'M';
+  const QR_MAX_FRAMES = 60; // beyond this, QR just isn't a practical transfer method
+
+  function qrCapacityBytes(version, ecLevel) {
+    const [totalData] = QR_TABLE[version][ecLevel];
+    const countBits = version <= 9 ? 8 : 16;
+    return Math.floor((totalData * 8 - 4 - countBits) / 8);
+  }
+
+  function buildQrFrameTexts(base64Text) {
+    const capacityBytes = qrCapacityBytes(QR_VERSION, QR_EC_LEVEL);
+    if (base64Text.length <= capacityBytes) {
+      return [base64Text]; // single frame, no wrapper -- works with any scanner
+    }
+    const sessionId = Array.from(crypto.getRandomValues(new Uint8Array(3)))
+      .map((b) => b.toString(16).padStart(2, '0')).join('');
+    const maxHeaderLen = `SXZQ1:${sessionId}:999:999:`.length;
+    const chunkSize = capacityBytes - maxHeaderLen;
+    const totalFrames = Math.ceil(base64Text.length / chunkSize);
+    const frames = [];
+    for (let i = 0; i < totalFrames; i++) {
+      const chunk = base64Text.slice(i * chunkSize, (i + 1) * chunkSize);
+      frames.push(`SXZQ1:${sessionId}:${i + 1}:${totalFrames}:${chunk}`);
+    }
+    return frames;
+  }
+
+  /* Groups possibly-out-of-order / mixed-session raw scan results and
+     reassembles them into the original base64 string. Throws a
+     human-readable error (with progress info) if pieces are still missing. */
+  function reassembleQrPieces(rawTexts) {
+    const unique = Array.from(new Set(rawTexts.map((t) => t.trim()).filter(Boolean)));
+    const wrapped = unique.filter((t) => t.startsWith('SXZQ1:'));
+    const plain = unique.filter((t) => !t.startsWith('SXZQ1:'));
+
+    if (wrapped.length === 0) {
+      if (plain.length === 1) return plain[0];
+      if (plain.length === 0) throw new SecureZipError('QR_EMPTY', 'No QR content to reassemble yet.');
+      throw new SecureZipError('QR_AMBIGUOUS', 'Got more than one un-chunked QR code — scan just one, or use a multi-part QR sequence.');
+    }
+
+    const groups = new Map();
+    for (const t of wrapped) {
+      const parts = t.split(':');
+      if (parts.length < 5) throw new SecureZipError('QR_MALFORMED', 'One of the scanned pieces is malformed.');
+      const sid = parts[1];
+      const idx = parseInt(parts[2], 10);
+      const total = parseInt(parts[3], 10);
+      const chunk = parts.slice(4).join(':');
+      if (!Number.isFinite(idx) || !Number.isFinite(total) || total < 1 || idx < 1 || idx > total) {
+        throw new SecureZipError('QR_MALFORMED', 'One of the scanned pieces is malformed.');
+      }
+      if (!groups.has(sid)) groups.set(sid, { total, chunks: new Map() });
+      groups.get(sid).chunks.set(idx, chunk);
+    }
+    if (groups.size > 1) {
+      throw new SecureZipError('QR_MIXED', 'Pieces from more than one QR sequence got mixed together — scan just one set at a time.');
+    }
+    const group = groups.values().next().value;
+    if (group.chunks.size < group.total) {
+      throw new SecureZipError('QR_INCOMPLETE', `Got ${group.chunks.size} of ${group.total} pieces so far — keep scanning.`);
+    }
+    let combined = '';
+    for (let i = 1; i <= group.total; i++) {
+      if (!group.chunks.has(i)) throw new SecureZipError('QR_INCOMPLETE', `Missing piece ${i} of ${group.total}.`);
+      combined += group.chunks.get(i);
+    }
+    return combined;
+  }
+
+  function drawQrToCanvas(canvas, modules, targetPx) {
+    const n = modules.length;
+    const border = 4;
+    const scale = Math.max(2, Math.floor((targetPx || 320) / (n + border * 2)));
+    const px = (n + border * 2) * scale;
+    canvas.width = px;
+    canvas.height = px;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, px, px);
+    ctx.fillStyle = '#000';
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        if (modules[r][c]) ctx.fillRect((c + border) * scale, (r + border) * scale, scale, scale);
+      }
+    }
+  }
+
 
   /* =========================================================
      Minimal ZIP writer (store method only) for "download all" bundling
@@ -2834,6 +3459,64 @@
   }
 
   /* Generic result row builder shared by encrypt + decrypt outcomes */
+  /* Reusable "Save as: name [pencil]" control. Click the name or the pencil
+     to edit; Enter/blur commits, Escape reverts. Used both by result rows
+     and the "pack into zip" panels. */
+  function createEditableName(initialName, onCommit) {
+    let current = initialName;
+    const wrap = document.createElement('span');
+    wrap.className = 'result-saveas-row';
+
+    const display = document.createElement('span');
+    display.className = 'result-saveas-name';
+    display.textContent = current;
+
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'result-saveas-edit';
+    editBtn.setAttribute('aria-label', 'Rename');
+    editBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'result-saveas-input';
+    input.hidden = true;
+    input.spellcheck = false;
+    input.autocomplete = 'off';
+
+    const commit = () => {
+      const typed = input.value.trim();
+      const newName = sanitizeFilename(typed || current);
+      current = newName;
+      display.textContent = newName;
+      display.hidden = false;
+      editBtn.hidden = false;
+      input.hidden = true;
+      if (onCommit) onCommit(newName);
+    };
+    const startEdit = () => {
+      input.value = current;
+      display.hidden = true;
+      editBtn.hidden = true;
+      input.hidden = false;
+      input.focus();
+      const dot = current.lastIndexOf('.');
+      if (dot > 0) input.setSelectionRange(0, dot); else input.select();
+    };
+    editBtn.addEventListener('click', startEdit);
+    display.addEventListener('click', startEdit);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      else if (e.key === 'Escape') { e.preventDefault(); input.value = current; commit(); }
+    });
+    input.addEventListener('blur', commit);
+
+    wrap.appendChild(display);
+    wrap.appendChild(editBtn);
+    wrap.appendChild(input);
+    return { element: wrap, getName: () => current, setName: (n) => { current = n; display.textContent = n; } };
+  }
+
   function createResultRow(opts) {
     const row = document.createElement('div');
     row.className = 'result-row';
@@ -2860,6 +3543,20 @@
     nameEl.className = 'result-name';
     nameEl.textContent = opts.name;
     info.appendChild(nameEl);
+
+    let currentDownloadName = opts.downloadName;
+    if (opts.status === 'done' && opts.downloadBlob) {
+      const saveAsLabel = document.createElement('span');
+      saveAsLabel.className = 'result-saveas-label';
+      saveAsLabel.textContent = 'Save as:';
+
+      const editable = createEditableName(currentDownloadName, (newName) => {
+        currentDownloadName = newName;
+        if (opts.onRename) opts.onRename(newName);
+      });
+      editable.element.prepend(saveAsLabel);
+      info.appendChild(editable.element);
+    }
 
     if (opts.status === 'done') {
       const statsEl = document.createElement('div');
@@ -3000,13 +3697,138 @@
         info.appendChild(textWrap);
       }
 
-      if (opts.onDownload) {
+      if (opts.downloadBlob) {
         const dlBtn = document.createElement('button');
         dlBtn.type = 'button';
         dlBtn.className = 'secondary-btn';
         dlBtn.textContent = 'Download';
-        dlBtn.addEventListener('click', opts.onDownload);
+        dlBtn.addEventListener('click', () => downloadBlob(opts.downloadBlob, currentDownloadName));
         actions.appendChild(dlBtn);
+      }
+
+      if (opts.getQrData) {
+        const qrBtn = document.createElement('button');
+        qrBtn.type = 'button';
+        qrBtn.className = 'secondary-btn';
+        qrBtn.textContent = 'Show as QR';
+
+        const qrPanel = document.createElement('div');
+        qrPanel.className = 'qr-panel';
+        qrPanel.hidden = true;
+        let qrBuilt = false;
+        let qrTimer = null;
+        let qrFrameIdx = 0;
+        let qrFrames = null;
+        let qrPlaying = true;
+
+        qrBtn.addEventListener('click', () => {
+          qrPanel.hidden = !qrPanel.hidden;
+          qrBtn.textContent = qrPanel.hidden ? 'Show as QR' : 'Hide QR';
+          if (!qrPanel.hidden && !qrBuilt) buildQrPanel();
+          if (qrPanel.hidden && qrTimer) { clearInterval(qrTimer); qrTimer = null; }
+          if (!qrPanel.hidden && qrFrames && qrFrames.length > 1 && !qrTimer) startQrTimer();
+        });
+
+        function renderFrame() {
+          const canvas = qrPanel.querySelector('canvas');
+          const bytes = Array.from(new TextEncoder().encode(qrFrames[qrFrameIdx]));
+          const modules = encodeQR(bytes, QR_VERSION, QR_EC_LEVEL);
+          drawQrToCanvas(canvas, modules, 280);
+          const label = qrPanel.querySelector('.qr-frame-label');
+          if (label) label.textContent = qrFrames.length > 1 ? `Frame ${qrFrameIdx + 1} of ${qrFrames.length}` : 'Single QR code';
+        }
+
+        function startQrTimer() {
+          qrPlaying = true;
+          const playBtn = qrPanel.querySelector('.qr-play-pause');
+          if (playBtn) playBtn.textContent = 'Pause';
+          qrTimer = setInterval(() => {
+            qrFrameIdx = (qrFrameIdx + 1) % qrFrames.length;
+            renderFrame();
+          }, 550);
+        }
+
+        function buildQrPanel() {
+          qrBuilt = true;
+          let base64;
+          try {
+            base64 = opts.getQrData();
+          } catch (e) {
+            qrPanel.textContent = "Couldn't prepare this for QR display.";
+            return;
+          }
+          qrFrames = buildQrFrameTexts(base64);
+
+          if (qrFrames.length > QR_MAX_FRAMES) {
+            const warn = document.createElement('p');
+            warn.className = 'field-hint';
+            warn.textContent = `This would need ${qrFrames.length} QR frames — too many to be practical. QR transfer works best for small things like passwords, keyfiles, or short notes. Try Share or Download instead for this file.`;
+            qrPanel.appendChild(warn);
+            return;
+          }
+
+          const canvas = document.createElement('canvas');
+          qrPanel.appendChild(canvas);
+
+          if (qrFrames.length > 1) {
+            const controls = document.createElement('div');
+            controls.className = 'qr-frame-controls';
+            const prevBtn = document.createElement('button');
+            prevBtn.type = 'button';
+            prevBtn.textContent = '‹ Prev';
+            prevBtn.addEventListener('click', () => {
+              if (qrTimer) { clearInterval(qrTimer); qrTimer = null; }
+              qrFrameIdx = (qrFrameIdx - 1 + qrFrames.length) % qrFrames.length;
+              renderFrame();
+            });
+            const label = document.createElement('span');
+            label.className = 'qr-frame-label';
+            const nextBtn = document.createElement('button');
+            nextBtn.type = 'button';
+            nextBtn.textContent = 'Next ›';
+            nextBtn.addEventListener('click', () => {
+              if (qrTimer) { clearInterval(qrTimer); qrTimer = null; }
+              qrFrameIdx = (qrFrameIdx + 1) % qrFrames.length;
+              renderFrame();
+            });
+            const playBtn = document.createElement('button');
+            playBtn.type = 'button';
+            playBtn.className = 'qr-play-pause';
+            playBtn.textContent = 'Pause';
+            playBtn.addEventListener('click', () => {
+              if (qrTimer) {
+                clearInterval(qrTimer); qrTimer = null; qrPlaying = false;
+                playBtn.textContent = 'Play';
+              } else {
+                startQrTimer();
+              }
+            });
+            controls.appendChild(prevBtn);
+            controls.appendChild(label);
+            controls.appendChild(nextBtn);
+            controls.appendChild(playBtn);
+            qrPanel.appendChild(controls);
+
+            const hint = document.createElement('p');
+            hint.className = 'field-hint';
+            hint.textContent = `${qrFrames.length} frames — scan with the Decrypt tab's "Scan QR" (Chrome/Edge), or scan each with any camera app and paste them into "Reassemble from scanned pieces".`;
+            qrPanel.appendChild(hint);
+            startQrTimer();
+          } else {
+            const label = document.createElement('p');
+            label.className = 'qr-frame-label field-hint';
+            label.textContent = 'Single QR code';
+            qrPanel.appendChild(label);
+            const hint = document.createElement('p');
+            hint.className = 'field-hint';
+            hint.textContent = 'Scan with any QR app, then paste the result into the Decrypt tab.';
+            qrPanel.appendChild(hint);
+          }
+          renderFrame();
+        }
+
+        actions.appendChild(qrBtn);
+        info.appendChild(qrPanel);
       }
 
       if (opts.parts && opts.parts.length > 1) {
@@ -3049,24 +3871,37 @@
         info.appendChild(partList);
       }
 
-      if (opts.getShareFile && navigator.share && navigator.canShare) {
+      if (opts.downloadBlob && navigator.share && navigator.canShare) {
         const shareBtn = document.createElement('button');
         shareBtn.type = 'button';
         shareBtn.className = 'secondary-btn';
         shareBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v13m0-13 4 4m-4-4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg> Share';
         shareBtn.addEventListener('click', async () => {
-          let file;
-          try { file = opts.getShareFile(); } catch (e) { file = null; }
-          if (!file || !navigator.canShare({ files: [file] })) {
-            const orig = shareBtn.innerHTML;
-            shareBtn.textContent = 'Not supported here';
-            setTimeout(() => { shareBtn.innerHTML = orig; }, 1800);
+          let file = null;
+          try {
+            file = new File([opts.downloadBlob], currentDownloadName, { type: opts.downloadBlob.type || 'application/octet-stream' });
+          } catch (e) {
+            showToast("Couldn't prepare this file to share.", 3200);
             return;
           }
+
+          let shareable = false;
+          try {
+            shareable = !!(file && navigator.canShare({ files: [file] }));
+          } catch (e) {
+            shareable = false; // some browsers throw here instead of returning false
+          }
+
+          if (!shareable) {
+            showToast("Sharing isn't supported for this file on this browser/device — try Download instead.", 3600);
+            return;
+          }
+
           try {
             await navigator.share({ files: [file], title: file.name });
           } catch (e) {
-            // AbortError just means the person closed the share sheet — not an error worth surfacing.
+            if (e && e.name === 'AbortError') return; // person closed the share sheet — not an error
+            showToast("Share didn't go through" + (e && e.message ? ': ' + e.message : '') + ' — try Download instead.', 4200);
           }
         });
         actions.appendChild(shareBtn);
@@ -3163,8 +3998,7 @@
     iterations: ITERATIONS_DEFAULT,
     outputFormat: 'sxz', // 'sxz' | 'gz' (gz only applies to compress-only mode)
     splitSize: 0, // 0 = don't split; otherwise target bytes per part
-    recipients: [], // additional recipients beyond the primary password field
-    decoyEnabled: false
+    recipients: [] // additional recipients beyond the primary password field
   };
 
   function operationFlags(op) {
@@ -3224,12 +4058,6 @@
   const encSplitSelect = $('encrypt-split-select');
   const encRecipientsList = $('encrypt-recipients-list');
   const encAddRecipientBtn = $('encrypt-add-recipient-btn');
-  const encDecoyEnable = $('encrypt-decoy-enable');
-  const encDecoyFields = $('encrypt-decoy-fields');
-  const encDecoyText = $('encrypt-decoy-text');
-  const encDecoyPassword = $('encrypt-decoy-password');
-  const encDecoyConfirm = $('encrypt-decoy-password-confirm');
-  const decoyMatchHint = $('decoy-password-match-hint');
   const encryptBtn = $('encrypt-btn');
   const encryptProcess = $('encrypt-process');
   const encryptPhaseLabel = $('encrypt-phase-label');
@@ -3248,7 +4076,7 @@
   const encControls = [inputToggleFile, inputToggleText, opToggleCompress, opToggleEncrypt, opToggleBoth,
     formatToggleSxz, formatToggleGz, dropzone, cameraCaptureBtn, textInput, encPassword, encConfirm,
     passwordGenerateBtn, passwordCopyBtn, encKeyfilePickBtn, encKeyfileGenBtn, encIterationsRange, encSplitSelect,
-    encAddRecipientBtn, encDecoyEnable, encDecoyText, encDecoyPassword, encDecoyConfirm, encryptBtn];
+    encAddRecipientBtn, encryptBtn];
 
   function setEncryptBusy(busy) {
     encState.busy = busy;
@@ -3535,6 +4363,10 @@
     header.appendChild(removeBtn);
     row.appendChild(header);
 
+    const pairRow = document.createElement('div');
+    pairRow.className = 'field-pair-row';
+    pairRow.style.marginTop = '10px';
+
     const pwField = document.createElement('div');
     pwField.className = 'password-field';
     const pwInput = document.createElement('input');
@@ -3551,13 +4383,14 @@
     wireToggleVisibility(pwToggle);
     pwField.appendChild(pwInput);
     pwField.appendChild(pwToggle);
-    row.appendChild(pwField);
+    pairRow.appendChild(pwField);
 
     const confirmInput = document.createElement('input');
     confirmInput.type = 'password';
     confirmInput.autocomplete = 'new-password';
     confirmInput.placeholder = 'Confirm password';
-    row.appendChild(confirmInput);
+    pairRow.appendChild(confirmInput);
+    row.appendChild(pairRow);
 
     const matchHint = document.createElement('p');
     matchHint.className = 'field-hint';
@@ -3635,32 +4468,6 @@
     updateEncryptButtonState();
   });
 
-  /* ---------- Decoy volume ---------- */
-  encDecoyEnable.addEventListener('change', () => {
-    encState.decoyEnabled = encDecoyEnable.checked;
-    encDecoyFields.hidden = !encState.decoyEnabled;
-    resetEncryptResultUI();
-    updateEncryptButtonState();
-  });
-
-  function updateDecoyMatch() {
-    if (!encDecoyConfirm.value) {
-      decoyMatchHint.textContent = '';
-      decoyMatchHint.className = 'field-hint';
-    } else if (encDecoyPassword.value === encDecoyConfirm.value) {
-      decoyMatchHint.textContent = '✓ Passwords match';
-      decoyMatchHint.className = 'field-hint match-ok';
-    } else {
-      decoyMatchHint.textContent = "✗ Passwords don't match";
-      decoyMatchHint.className = 'field-hint match-bad';
-    }
-    resetEncryptResultUI();
-    updateEncryptButtonState();
-  }
-  encDecoyPassword.addEventListener('input', updateDecoyMatch);
-  encDecoyConfirm.addEventListener('input', updateDecoyMatch);
-  encDecoyText.addEventListener('input', () => { resetEncryptResultUI(); updateEncryptButtonState(); });
-
   /* ---------- Advanced: PBKDF2 iterations ---------- */
   encIterationsRange.addEventListener('input', () => {
     const value = parseInt(encIterationsRange.value, 10);
@@ -3687,10 +4494,6 @@
       for (const r of encState.recipients) {
         if (!(r.passwordInput.value.length >= 4 && r.passwordInput.value === r.confirmInput.value)) return false;
       }
-      if (encState.decoyEnabled) {
-        if (!encDecoyText.value.trim().length) return false;
-        if (!(encDecoyPassword.value.length >= 4 && encDecoyPassword.value === encDecoyConfirm.value)) return false;
-      }
       return true;
     }
     return true;
@@ -3703,6 +4506,8 @@
     encryptError.hidden = true;
     encryptResults.hidden = true;
     encryptResultsList.innerHTML = '';
+    const packPanel = $('encrypt-pack-zip-panel');
+    if (packPanel) { packPanel.hidden = true; packPanel.innerHTML = ''; }
   }
 
   const ENCRYPT_PHASES_BOTH = {
@@ -3781,7 +4586,7 @@
         const prefix = jobs.length > 1 ? `File ${i + 1}/${jobs.length} — ${job.name}: ` : '';
         const onPhase = makePhaseUpdater(phaseMap, encryptPhaseLabel, encryptPhasePct, encryptProgressFill, prefix);
         const useRawGzip = encState.operation === 'compress' && encState.outputFormat === 'gz';
-        const useMultiVolume = operation.encrypt && (encState.recipients.length > 0 || encState.decoyEnabled);
+        const useMultiVolume = operation.encrypt && encState.recipients.length > 0;
         try {
           let outBytes, statsLine, usedKeyfile;
           if (useRawGzip) {
@@ -3796,16 +4601,10 @@
               { password, keyfileBytes: encState.keyfileBytes },
               ...encState.recipients.map((r) => ({ password: r.passwordInput.value, keyfileBytes: r.keyfileBytes }))
             ];
-            const decoyConfig = encState.decoyEnabled ? {
-              text: encDecoyText.value,
-              password: encDecoyPassword.value,
-              iterations: encState.iterations
-            } : null;
-            const result = await runMultiVolumeEncryptPipeline(recipients, job.meta, job.source, job.size, operation, encState.iterations, decoyConfig, onPhase);
+            const result = await runMultiVolumeEncryptPipeline(recipients, job.meta, job.source, job.size, operation, encState.iterations, onPhase);
             outBytes = result.out;
             statsLine = buildEncryptStatsLine(result)
-              + (result.recipientCount > 1 ? ` · ${result.recipientCount} recipients` : '')
-              + (result.hasDecoy ? ' · decoy included' : '');
+              + (result.recipientCount > 1 ? ` · ${result.recipientCount} recipients` : '');
             usedKeyfile = result.usedKeyfile;
           } else {
             const result = await runEncryptPipeline(password, job.meta, job.source, job.size, operation, encState.iterations, encState.keyfileBytes, onPhase);
@@ -3839,16 +4638,19 @@
             });
           } else {
             const blob = new Blob([outBytes], { type: 'application/octet-stream' });
+            const zipEntry = { name: zipPath, bytes: outBytes };
+            zipEntries.push(zipEntry);
             encryptResultsList.appendChild(createResultRow({
               status: 'done',
               name: job.meta.name + ' → ' + filename,
               statsLine: statsLine + (usedKeyfile ? ' · keyfile' : ''),
               fingerprint,
-              onDownload: () => downloadBlob(blob, filename),
+              downloadBlob: blob,
+              downloadName: filename,
+              onRename: (newName) => { zipEntry.name = replaceZipPathBasename(zipPath, newName); },
               getCopyAsText: () => bytesToBase64(outBytes),
-              getShareFile: () => new File([blob], filename, { type: 'application/octet-stream' })
+              getQrData: () => bytesToBase64(outBytes)
             }));
-            zipEntries.push({ name: zipPath, bytes: outBytes });
           }
           successCount++;
         } catch (err) {
@@ -3877,11 +4679,71 @@
     }
   });
 
-  encryptDownloadAllBtn.addEventListener('click', () => {
-    if (!encState.zipEntries.length) return;
-    const zipBytes = buildZip(encState.zipEntries);
-    downloadBlob(new Blob([zipBytes], { type: 'application/zip' }), `securezip-batch-${nowStamp()}.zip`);
-  });
+  /* Two-step "Pack into ZIP" flow: build the zip on demand (not
+     automatically), show its size, and let the person rename it before
+     actually downloading — used by both the encrypt and decrypt panels. */
+  function setupPackToZip(packBtn, panel, getEntries, defaultNameFn) {
+    packBtn.addEventListener('click', () => {
+      const entries = getEntries();
+      if (!entries.length) return;
+      const zipBytes = buildZip(entries);
+      const blob = new Blob([zipBytes], { type: 'application/zip' });
+
+      panel.innerHTML = '';
+      panel.hidden = false;
+
+      const editable = createEditableName(defaultNameFn(), () => {});
+      panel.appendChild(editable.element);
+
+      const sizeLine = document.createElement('p');
+      sizeLine.className = 'pack-zip-size';
+      sizeLine.textContent = `${entries.length} file${entries.length === 1 ? '' : 's'} packed · ${formatBytes(blob.size)}`;
+      panel.appendChild(sizeLine);
+
+      const actionsRow = document.createElement('div');
+      actionsRow.className = 'pack-zip-actions';
+
+      const downloadBtn = document.createElement('button');
+      downloadBtn.type = 'button';
+      downloadBtn.className = 'secondary-btn accent-btn';
+      downloadBtn.textContent = 'Download ZIP';
+      downloadBtn.addEventListener('click', () => downloadBlob(blob, editable.getName()));
+      actionsRow.appendChild(downloadBtn);
+
+      if (navigator.share && navigator.canShare) {
+        const shareBtn = document.createElement('button');
+        shareBtn.type = 'button';
+        shareBtn.className = 'secondary-btn';
+        shareBtn.textContent = 'Share';
+        shareBtn.addEventListener('click', async () => {
+          let file = null;
+          try {
+            file = new File([blob], editable.getName(), { type: 'application/zip' });
+          } catch (e) {
+            showToast("Couldn't prepare this ZIP to share.", 3200);
+            return;
+          }
+          let shareable = false;
+          try { shareable = !!(file && navigator.canShare({ files: [file] })); } catch (e) { shareable = false; }
+          if (!shareable) {
+            showToast("Sharing isn't supported for this on this browser/device — try Download instead.", 3600);
+            return;
+          }
+          try {
+            await navigator.share({ files: [file], title: file.name });
+          } catch (e) {
+            if (e && e.name === 'AbortError') return;
+            showToast("Share didn't go through" + (e && e.message ? ': ' + e.message : '') + ' — try Download instead.', 4200);
+          }
+        });
+        actionsRow.appendChild(shareBtn);
+      }
+
+      panel.appendChild(actionsRow);
+    });
+  }
+
+  setupPackToZip(encryptDownloadAllBtn, $('encrypt-pack-zip-panel'), () => encState.zipEntries, () => `securezip-batch-${nowStamp()}.zip`);
 
   /* =========================================================
      DECRYPT panel state & logic
@@ -3902,6 +4764,13 @@
   const decInputViewFile = $('input-view-decrypt-file');
   const decInputViewPaste = $('input-view-decrypt-paste');
   const decPasteInput = $('decrypt-paste-input');
+  const decQrVideo = $('decrypt-qr-video');
+  const decQrCameraStatus = $('decrypt-qr-camera-status');
+  const decQrCameraStart = $('decrypt-qr-camera-start');
+  const decQrCameraStop = $('decrypt-qr-camera-stop');
+  const decQrPastePieces = $('decrypt-qr-paste-pieces');
+  const decQrReassembleBtn = $('decrypt-qr-reassemble-btn');
+  const decQrReassembleHint = $('decrypt-qr-reassemble-hint');
   const decDropzone = $('decrypt-dropzone');
   const decFileInput = $('decrypt-file-input');
   const decFileList = $('decrypt-file-list');
@@ -3944,6 +4813,8 @@
     decState.thumbUrls = [];
     document.querySelectorAll('#decrypt-file-list .verify-badge').forEach((el) => el.remove());
     if (decryptVerifyHint) { decryptVerifyHint.textContent = ''; decryptVerifyHint.className = 'field-hint'; }
+    const packPanel = $('decrypt-pack-zip-panel');
+    if (packPanel) { packPanel.hidden = true; packPanel.innerHTML = ''; }
   }
 
   function applyPeekBadge(main, info) {
@@ -4151,6 +5022,99 @@
     updateDecryptButtonState();
   });
 
+  /* ---------- QR import: camera scan (feature-detected) + paste-pieces fallback ---------- */
+  let qrCameraStream = null;
+  let qrCameraLoopId = null;
+  const qrScannedPieces = new Set();
+
+  function stopQrCameraScan(statusMessage) {
+    if (qrCameraLoopId) { cancelAnimationFrame(qrCameraLoopId); qrCameraLoopId = null; }
+    if (qrCameraStream) { qrCameraStream.getTracks().forEach((t) => t.stop()); qrCameraStream = null; }
+    decQrVideo.srcObject = null;
+    decQrVideo.hidden = true;
+    decQrCameraStart.hidden = false;
+    decQrCameraStop.hidden = true;
+    if (statusMessage !== undefined) decQrCameraStatus.textContent = statusMessage;
+  }
+
+  async function startQrCameraScan() {
+    if (!('BarcodeDetector' in window)) {
+      decQrCameraStatus.textContent = "This browser can't scan QR codes directly — use the paste box below instead (scan with your phone's camera app, then paste the result here).";
+      return;
+    }
+    try {
+      const formats = await window.BarcodeDetector.getSupportedFormats();
+      if (!formats.includes('qr_code')) {
+        decQrCameraStatus.textContent = "This browser's scanner doesn't support QR codes — use the paste box below instead.";
+        return;
+      }
+    } catch (e) {
+      decQrCameraStatus.textContent = 'Could not check QR scanning support — use the paste box below instead.';
+      return;
+    }
+
+    try {
+      qrCameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    } catch (e) {
+      decQrCameraStatus.textContent = "Couldn't access the camera — check permissions, or use the paste box below.";
+      return;
+    }
+
+    qrScannedPieces.clear();
+    decQrVideo.srcObject = qrCameraStream;
+    decQrVideo.hidden = false;
+    decQrCameraStart.hidden = true;
+    decQrCameraStop.hidden = false;
+    decQrCameraStatus.textContent = 'Point the camera at the QR code(s)…';
+    try { await decQrVideo.play(); } catch (e) {}
+
+    const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+    const loop = async () => {
+      if (!qrCameraStream) return;
+      try {
+        const codes = await detector.detect(decQrVideo);
+        for (const code of codes) if (code.rawValue) qrScannedPieces.add(code.rawValue);
+        if (qrScannedPieces.size) {
+          try {
+            const base64 = reassembleQrPieces(Array.from(qrScannedPieces));
+            decPasteInput.value = base64;
+            stopQrCameraScan('Done — QR content imported below. Ready to decrypt.');
+            resetDecryptResultUI();
+            updateDecryptButtonState();
+            return;
+          } catch (e) {
+            if (e.code === 'QR_INCOMPLETE') decQrCameraStatus.textContent = e.message;
+          }
+        }
+      } catch (e) { /* transient detection hiccup -- keep scanning */ }
+      qrCameraLoopId = requestAnimationFrame(loop);
+    };
+    qrCameraLoopId = requestAnimationFrame(loop);
+  }
+
+  decQrCameraStart.addEventListener('click', startQrCameraScan);
+  decQrCameraStop.addEventListener('click', () => stopQrCameraScan(''));
+
+  decQrReassembleBtn.addEventListener('click', () => {
+    const lines = decQrPastePieces.value.split('\n').map((s) => s.trim()).filter(Boolean);
+    if (!lines.length) {
+      decQrReassembleHint.textContent = 'Paste at least one scanned piece first.';
+      decQrReassembleHint.className = 'field-hint match-bad';
+      return;
+    }
+    try {
+      const base64 = reassembleQrPieces(lines);
+      decPasteInput.value = base64;
+      decQrReassembleHint.textContent = '✓ Reassembled — ready to decrypt below.';
+      decQrReassembleHint.className = 'field-hint match-ok';
+      resetDecryptResultUI();
+      updateDecryptButtonState();
+    } catch (e) {
+      decQrReassembleHint.textContent = e.message || 'Could not reassemble these pieces.';
+      decQrReassembleHint.className = 'field-hint match-bad';
+    }
+  });
+
   function setDecryptKeyfile(bytes, name) {
     decState.keyfileBytes = bytes;
     decState.keyfileName = name;
@@ -4292,6 +5256,9 @@
               thumbUrls.push(previewUrl);
               previewKind = 'pdf';
             }
+            const zipPath = sanitizeZipPath(outName);
+            const zipEntry = { name: zipPath, bytes: data };
+            zipEntries.push(zipEntry);
             decryptResultsList.appendChild(createResultRow({
               status: 'done',
               name: outName,
@@ -4299,23 +5266,27 @@
               thumbUrl,
               previewKind,
               previewUrl,
-              onDownload: () => downloadBlob(blob, downloadName),
-              getShareFile: () => new File([blob], downloadName, { type: mime })
+              downloadBlob: blob,
+              downloadName,
+              onRename: (newName) => { zipEntry.name = replaceZipPathBasename(zipPath, newName); }
             }));
-            zipEntries.push({ name: sanitizeZipPath(outName), bytes: data });
           } else {
             const text = new TextDecoder().decode(data);
             const outName = meta.name || 'decrypted-text.txt';
             const downloadName = sanitizeFilename(outName.toLowerCase().endsWith('.txt') ? outName : outName + '.txt');
+            const textBlob = new Blob([text], { type: 'text/plain' });
+            const zipPath = sanitizeZipPath(outName.toLowerCase().endsWith('.txt') ? outName : outName + '.txt');
+            const zipEntry = { name: zipPath, bytes: new TextEncoder().encode(text) };
+            zipEntries.push(zipEntry);
             decryptResultsList.appendChild(createResultRow({
               status: 'done',
               name: outName,
               statsLine,
               textValue: text,
-              getShareFile: () => new File([text], downloadName, { type: 'text/plain' })
+              downloadBlob: textBlob,
+              downloadName,
+              onRename: (newName) => { zipEntry.name = replaceZipPathBasename(zipPath, newName); }
             }));
-            const zipName = sanitizeZipPath(outName.toLowerCase().endsWith('.txt') ? outName : outName + '.txt');
-            zipEntries.push({ name: zipName, bytes: new TextEncoder().encode(text) });
           }
           successCount++;
         } catch (err) {
@@ -4343,11 +5314,7 @@
     }
   });
 
-  decryptDownloadAllBtn.addEventListener('click', () => {
-    if (!decState.zipEntries.length) return;
-    const zipBytes = buildZip(decState.zipEntries);
-    downloadBlob(new Blob([zipBytes], { type: 'application/zip' }), `securezip-restored-${nowStamp()}.zip`);
-  });
+  setupPackToZip(decryptDownloadAllBtn, $('decrypt-pack-zip-panel'), () => decState.zipEntries, () => `securezip-restored-${nowStamp()}.zip`);
 
   decryptVerifyBtn.addEventListener('click', async () => {
     if (!isDecryptReady()) return;
@@ -4481,9 +5448,11 @@
   let hiddenTimer = null;
 
   function hasSensitiveContent() {
+    const recipientsHaveContent = encState.recipients.some((r) => r.passwordInput.value || r.confirmInput.value || r.keyfileBytes);
     return !!(
       encPassword.value || encConfirm.value || decPassword.value || decPasteInput.value ||
       textInput.value || encState.keyfileBytes || decState.keyfileBytes ||
+      recipientsHaveContent || decQrPastePieces.value ||
       !encryptResults.hidden || !decryptResults.hidden
     );
   }
@@ -4497,8 +5466,17 @@
     decPassword.value = '';
     decPasteInput.value = '';
     textInput.value = '';
+    decQrPastePieces.value = '';
+    if (decQrReassembleHint) { decQrReassembleHint.textContent = ''; decQrReassembleHint.className = 'field-hint'; }
     if (encState.keyfileBytes) setEncryptKeyfile(null, null);
     if (decState.keyfileBytes) setDecryptKeyfile(null, null);
+
+    // Additional recipients: clear their fields and drop the rows entirely,
+    // same treatment as clearing the primary password.
+    encState.recipients.slice().forEach((r) => r.row.remove());
+    encState.recipients = [];
+    if (typeof renumberRecipientLabels === 'function') renumberRecipientLabels();
+
     resetEncryptResultUI();
     resetDecryptResultUI();
     updateStrengthMeter();
